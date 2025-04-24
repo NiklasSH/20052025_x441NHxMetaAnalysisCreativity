@@ -4,15 +4,16 @@ library(tidyverse)
 library(ggtext)
 library(gridExtra)
 library(broom)
+library(here)
 
 # --------- Ensure Results directory exists ---------
-output_dir <- "Results"
+output_dir <- "Plots"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 # --------- Load Datasets ---------
-df_performance <- read_csv2("Human-AI_Creative_Performance.csv")
-df_diversity <- read_csv2("Human-AI_Diversity.csv")
-df_versus      <- read_csv2("Human_vs_AI.csv")
+df_performance <- read_csv2( here("Data","Human-AI_Creative_Performance.csv") )
+df_diversity   <- read_csv2( here("Data","Human-AI_Diversity.csv") )
+df_versus      <- read_csv2( here("Data","Human_vs_AI.csv") )
 
 # --------- Mutate Date ---------
 df_performance <- df_performance %>% 
