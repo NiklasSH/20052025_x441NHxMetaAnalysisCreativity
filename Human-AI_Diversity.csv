@@ -1,0 +1,4 @@
+﻿ID;Titel;Date;Study_Origin;Participants;Sample_Size;GenAI_Type;n_treatment;Standard Deviation 1;Mean 1;n_control;Standard Deviation 2;Mean 2;cohens_d
+N01;CreativeConnect: Supporting Reference Recombination for Graphic Design Ideation with Generative AI;2023-12-19;Asia;Business;6;T2I & T2T;16;1,418;4,75;16;1,607;4,625;0,082
+N02;Homogenization Effects of Large Language Models on Human Creative Ideation, 30, 413–425;2024-05-10;North America ;Academia;32;T2T;33;;;33;;;0,47
+N03;The Dynamics of Collective Creativity in Human-AI Social Networks;2025-02-25;Europe ;Not disclosed;1133;T2T;508;0,043;0,86;625;0,019;0,823;1,15397894

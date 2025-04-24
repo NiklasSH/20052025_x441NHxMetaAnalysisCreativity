@@ -21,6 +21,13 @@
 # RStudio files
 .Rproj.user/
 
+
+# Results folder (generated outputs)
+Results/
+
+# macOS system files
+.DS_Store
+
 # produced vignettes
 vignettes/*.html
 vignettes/*.pdf

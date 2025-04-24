@@ -1,0 +1,12 @@
+﻿ID;Titel;Date;Study_Origin;Participants;Sample_Size;GenAI_Type;n_treatment;Standard Deviation 1;Mean 1;n_control;Standard Deviation 2;Mean 2;cohens_d
+CP11;Creative sketching partner;2020-03-17;North America ;Education;50;T2I;50;;;50;;;1,049657335
+CP10;Artificial Intelligence Creates Art? An Experimental Investigation of Value and Creativity Perceptions;2023-06-27;Europe ;Academia;199;T2T;66;;;65;;;0,449187593
+CP07;CreativeConnect: Supporting Reference Recombination for Graphic Design Ideation with Generative AI;2023-12-19;Asia;Business;16;T2I & T2T;16;1,4418;4,854;16;1,708;4,344;0,3249
+CP05;Homogenization Effects of Large Language Models on Human Creative Ideation, 30, 413–425;2024-05-10;North America ;Academia;32;T2T;33;0,07;0,65;33;0,08;0,66;0,12
+CP01;Establishing the importance of co-creation and self-efficacy in creative collaboration with artificial intelligence;2024-08-09;North America ;Academia;96;T2T;48;4,32;12,55;48;4,94;18,23;-1,2351
+CP09;Revolution or inflated expectations? Exploring the impact of generative AI on ideation in a practical sustainability context;2024-10-01;Europe ;Business;56;T2T;26;0,53;2,91;30;0,52;2,73;0,343
+CP03;Large Language Model in Creative Work: The Role of Collaboration Modality and User Expertise;2024-10-15;North America ;Business;239;T2T;122;1,836;4,369;117;1,823;4,521;-0,083078268
+CP08;Creativity in the Age of AI: Evaluating the Impact of Generative AI on Design Outputs and Designers' Creative Thinking;2024-10-31;North America ;Business;105;T2I;52;1,389;3,909;53;1,359;3,457;0,32898
+CP04;Empowering Engineering Students Through Artificial Intelligence (AI): Blended Human–AI Creative Ideation Processes With ChatGPT;2025-01-08;Europe ;Education;51;T2T;51;;;51;;;0,04
+CP06;One Does Not Simply Meme Alone: Evaluating Co-Creativity Between LLMs and Humans in the Generation of Humor, 1082–1092;2025-01-23;Europe ;Not disclosed;300;T2I & T2T;150;;;150;;;0,27792
+CP02;The Dynamics of Collective Creativity in Human-AI Social Networks;2025-02-25;Europe ;Not disclosed;1133;T2T;508;1,159;2,327;625;1,026;2,482;-0,14
