@@ -50,8 +50,8 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
   res         <- rma(yi = cohens_d, vi = vi, data = df, method = "REML")
   summary_res <- summary(res)
   print(summary_res)
-  
-  # 3) Prepare data frame for plotting
+
+  # 2) Prepare data frame for plotting
   #    -- compute per-study weight = 1/(vi + tau2)
   tau2   <- res$tau2
   weights <- 1 / (df$vi + tau2)
@@ -65,7 +65,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
       weight = weights / sum(weights) * 100,  # percent weight
       study  = ID
     ) %>%
-    arrange(desc(Date)) %>% 
+    arrange(desc(effect)) %>% 
     mutate(order = row_number())
   
   # 3b) classify each study’s significance & choose a colour
@@ -77,8 +77,8 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
         TRUE                ~ "ns"
       ),
       col = case_when(
-        sign == "positive"  ~ "green",
-        sign == "negative"  ~ "red",
+        sign == "positive"  ~ "#006400",    # darkgreen
+        sign == "negative"  ~ "#8B0000",    # darkred
         sign == "ns"        ~ "grey40"
       )
     )
@@ -90,32 +90,32 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
   x_max <- max(plot_df$ci.ub, na.rm = TRUE)
   x_pad <- x_max + 0.05 * diff(range(plot_df$ci.lb, plot_df$ci.ub))
   
-  # 4) Build ggplot forest plot
+  # 3) Build ggplot forest plot
   dark_blue <- "#1f4e79"
   p <- ggplot(plot_df, aes(x = effect, y = order)) +
     
-    # A) overall CI band (grey, 30% opacity)
+    # 1) Overall CI band (orange, 30% opacity)
     annotate("rect",
              xmin = summary_res$ci.lb,
              xmax = summary_res$ci.ub,
              ymin = -Inf, ymax = Inf,
              fill = "orange", alpha = 0.3) +
-    # **new** black zero‐line
+    # 2) black zero‐line
     geom_vline(xintercept = 0,
                color      = "black",
-               size       = 0.7,
+               linewidth  = 0.7,
                alpha = 0.6) +
   
-    # B) study‐level CI blocks (light‐blue, 30% opacity)
+    # 3) Study‐level CI segments, coloured by significance (alpha = 0.3)
     geom_segment(aes(x    = ci.lb,
                      xend = ci.ub,
                      y    = order,
                      yend = order,
                      color = col),
-                 size  = 7,
+                 size  = 4,
                  alpha = 0.3) +
     
-    # 2) small dashed vertical at each studys own d
+    # 4) Small vertical lines at each study’s observed effect size
     geom_segment(
       aes(x    = effect,
           xend = effect,
@@ -124,25 +124,24 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
           color = col),
       size     = 1
     ) +
-    # 3) Weight squares
+    # 5) Weight squares (sized by study weight, coloured by significance)
     geom_point(aes(size = weight, color = col),
                shape = 15) +
     scale_color_identity(
-      name   = "Significance",
       guide  = "legend",
       labels = c(
-        "green"  = "Significant positive",
-        "red"    = "Significant negative",
-        "grey40" = "Non‑significant"
+        "#006400" = "95% CI > 0",
+        "#8B0000" = "95% CI < 0",
+        "grey40"  = "95% CI = 0"
       ),
-      breaks = c("green", "red", "grey40")
+      breaks = c("#006400", "#8B0000", "grey40")
     ) +
-    # 4) Red line at summary d
+    # 6) Summary effect (Cohen’s d) dashed line (orange)
     geom_vline(xintercept = summary_res$b[1],
-               linetype = "dashed",
+               linetype   = "dashed",
                color      = "orange",
-               size       = 1) +
-    # F) overall d label in the same boxed style as studies
+               linewidth  = 0.75) +
+    # 7) Overall d label in the same boxed style as studies
     geom_label(
       data = tibble(
         effect = summary_res$b[1],
@@ -151,7 +150,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
       aes(
         x     = effect,
         y     = order,
-        label = sprintf("d = %.3f", effect)
+        label = sprintf("Cohen's d = %.3f", effect)
       ),
       fill       = "white",
       label.size = 0.2,
@@ -159,101 +158,148 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
       size       = 3.5,
       hjust      = 0.5
     ) +
-    # 7) axes & theme tweaks
+    # 8) axes & theme tweaks
     scale_y_reverse(
       breaks = plot_df$order,
-      labels = as.character(plot_df$Date),
+      labels = as.character(plot_df$study),
       expand = expansion(add = c(0.5, 0.5)),     # gives 0.5 “row” of padding at top & bottom
       sec.axis = sec_axis(
-        trans = ~ .,
-        breaks = plot_df$order,
-        labels = plot_df$study,
-        name   = NULL    # no extra title on that side
+        transform = ~ .,
+        breaks    = plot_df$order,
+        labels    = plot_df$study,
+        name      = NULL    # no extra title on that side
       )
     ) +
+    geom_text(aes(x = x_pad, y = order, label = sprintf("%.1f%%", weight)),
+              hjust = 0, size = 4) +      # show weight in right column
     scale_size_continuous(
       range = c(3, 8),
-      name  = "Study weight (%)"
+      guide = "none"
     ) +
     # stack the two guides one on top of the other
     guides(
       color = guide_legend(nrow = 1, order = 1),  # importance: color first in the layout
-      size  = guide_legend(nrow = 1, order = 2)
     ) +
     theme_minimal(base_size = 12) +
     theme(
       legend.position      = "bottom",
+      legend.text          = element_text(size = 12),
+      legend.title         = element_text(size = 12),
       legend.box           = "vertical",        # <-- stack legends
-      plot.title.position  = "plot",            # <-- allow centering across full width
-      plot.title           = element_text(size = 14, face = "bold", hjust = 0.5),
-      axis.text.y.left   = element_markdown(hjust = 0),
-      axis.text.y.right  = element_markdown(hjust = 0),
-      axis.ticks.y.right = element_blank()
+      axis.text            = element_text(size = 12),
+      axis.text.y.left     = element_markdown(size = 12, hjust = 0),
+      axis.text.y.right  = element_blank(),
+      axis.ticks.y.right = element_blank(),
+      plot.margin          = margin(5, 20, 5, 5, "pt")
     ) +
+    coord_cartesian(clip = "off") +
     labs(
-      x     = bquote("Effect size (" * italic(d) * ")"),
+      x     = bquote("Effect size (Cohen's " * italic(d) * ")"),
       y     = NULL,
-      title = paste("Forest Plot:", label)
     )
   
-  # 5) Save & display
+  # 4) Save & display
   ggsave(
-    filename = file.path(output_dir, paste0(plot_filename, ".pdf")),
+    filename = file.path(output_dir, paste0(plot_filename, "_forest.pdf")),
     plot     = p,
     width    = save_width,
     height   = save_height,
     dpi      = 600
     )
   
-  # 5b) Violin plot of effect‐size heterogeneity
-  p_violin <- ggplot(plot_df, aes(x = "", y = effect)) +
+  # 5a_GenAI) Violin plot of effect‐size by GenAI_Type
+  p_violin_genai <- ggplot(plot_df, aes(x = GenAI_Type, y = effect)) +
     geom_violin(fill    = "skyblue",
                 alpha   = 0.6,
                 size    = 0.5) +
-    geom_hline(aes(yintercept = summary_res$b[1], linetype = "Meta‑analytic mean"),
-               color     = "orange",
-               size      = 0.8) +
+    geom_hline(yintercept = summary_res$b[1],
+               linetype    = "dashed",
+               color       = "orange",
+               linewidth   = 0.75,
+               show.legend = FALSE) +
     # ▶ annotate the median of the observed effects
-    stat_summary(aes(shape = "Observed median"),
-                 fun    = median,
-                 geom   = "point",
-                 size   = 3,
-                 fill   = "white",
-                 color  = "black") +
+    stat_summary(fun     = median,
+                 geom    = "point",
+                 shape   = 21,        # circle with fill+border
+                 size    = 4,         # outer diameter
+                 stroke  = 1,         # border thickness
+                 fill    = "white",   # inner color
+                 color   = "black",
+                 show.legend = FALSE) +
     geom_jitter(aes(color = col),
                 width  = 0.1,
                 size   = 4) +
     scale_color_identity() +
     scale_y_continuous() +
-    scale_linetype_manual(name   = NULL,
-                          values = c("Meta‑analytic mean" = "dashed")) +
-    scale_shape_manual(name   = NULL,
-                       values = c("Observed median"     = 23)) +
     labs(x     = NULL,
-         y     = bquote("Effect size (" * italic(d) * ")"),
-         title = paste("Effect‐Size Distribution:", label)) +
+         y     = bquote("Effect size (Cohen's " * italic(d) * ")")) +
     theme_minimal(base_size = 12) +
     theme(
-      panel.grid.major.x = element_blank(),
-      panel.grid.minor   = element_blank(),
-      axis.text.x        = element_blank(),
-      axis.ticks.x       = element_blank(),
-      plot.title         = element_text(size = 14, face = "bold"),
-      legend.position    = "bottom",
-      # stack the two keys horizontally
-      legend.box         = "horizontal",
-      legend.spacing.x   = unit(0.5, "cm")
+      axis.title           = element_text(size = 12),
+      axis.text            = element_text(size = 12),
+      axis.text.x          = element_text(size = 12, angle = 30, hjust = 1),
+      panel.grid.major     = element_line(color = "grey80"),
+      panel.grid.minor     = element_blank(),
+      plot.title           = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.margin          = margin(5, 5, 5, 5)
     )
   
   ggsave(
-    filename = file.path(output_dir, paste0(plot_filename, "_violin.pdf")),
-    plot     = p_violin,
+    filename = file.path(output_dir, paste0(plot_filename, "_violin_GenAI.pdf")),
+    plot     = p_violin_genai,
     width    = 6.8,
     height   = 4.5,
     dpi      = 600
   )
   
-  print(p_violin)
+  print(p_violin_genai)
+  
+  # 5b_Part) Violin plot of effect‐size by Participants
+  p_violin_part <- ggplot(plot_df, aes(x = Participants, y = effect)) +
+    geom_violin(fill    = "skyblue",
+                alpha   = 0.6,
+                size    = 0.5) +
+    geom_hline(yintercept = summary_res$b[1],
+               linetype    = "dashed",
+               color       = "orange",
+               linewidth   = 0.75,
+               show.legend = FALSE) +
+    # ▶ annotate the median of the observed effects
+    stat_summary(fun     = median,
+                 geom    = "point",
+                 shape   = 21,        # circle with fill+border
+                 size    = 4,         # outer diameter
+                 stroke  = 1,         # border thickness
+                 fill    = "white",   # inner color
+                 color   = "black",
+                 show.legend = FALSE) +
+    geom_jitter(aes(color = col),
+                width  = 0.1,
+                size   = 4) +
+    scale_color_identity() +
+    scale_y_continuous() +
+    labs(x     = NULL,
+         y     = bquote("Effect size (Cohen's " * italic(d) * ")")) +
+    theme_minimal(base_size = 12) +
+    theme(
+      axis.title           = element_text(size = 12),
+      axis.text            = element_text(size = 12),
+      axis.text.x          = element_text(size = 12, angle = 30, hjust = 1),
+      panel.grid.major     = element_line(color = "grey80"),
+      panel.grid.minor     = element_blank(),
+      plot.title           = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.margin          = margin(5, 5, 5, 5)
+    )
+  
+  # Save & show
+  ggsave(
+    filename = file.path(output_dir, paste0(plot_filename, "_violin_participants.pdf")),
+    plot     = p_violin_part,
+    width    = 6.8,
+    height   = 4.5,
+    dpi      = 600
+  )
+  print(p_violin_part)
   
   # 5c) Export summary table (and moderator tables) as PDF
   
@@ -280,18 +326,18 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
     )
   )
   
-  # ▶ funnel plot — observed
-  pdf(file.path(output_dir, paste0(plot_filename, "_funnel_observed.pdf")), width = save_width, height = save_height)
-  funnel(res, main = paste("Funnel plot —", label))
+  # 5d) Funnel plot — observed
+  pdf(file.path(output_dir, paste0(plot_filename, "_funnel_observed.pdf")), width = 6.8, height = 5)
+  funnel(res, main = NULL)
   dev.off()
 
-  # ▶ funnel plot — trim-and-fill
+  # 5e) Funnel plot — trim-and-fill
   tf <- trimfill(res)
-  pdf(file.path(output_dir, paste0(plot_filename, "_funnel_trimfill.pdf")), width = save_width, height = save_height)
-  funnel(tf, main = paste("Trim‑and‑fill —", label), col = "red")
+  pdf(file.path(output_dir, paste0(plot_filename, "_funnel_trimfill.pdf")), width = 6.8, height = 5)
+  funnel(tf, main = NULL, col = "#8B0000")
   dev.off()
 
-  # 3) Moderators: GenAI_Type & Participants
+  # 6) Moderators: GenAI_Type & Participants
   if(allow_moderator == TRUE){
     mods <- list()
     # GenAI_Type
@@ -320,9 +366,21 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
       p_mod <- ggplot(mod_all, aes(x=term, y=estimate, color=Moderator)) +
         geom_pointrange(aes(ymin=conf.low, ymax=conf.high), position=position_dodge(width=0.7)) +
         geom_hline(yintercept=0, linetype="dashed") + coord_flip() +
-        labs(title=paste("Moderator effects —", label), x=NULL,
+        labs(x=NULL,
              y=bquote("Effect size (" * italic(d) * ")")) +
-        theme_minimal()
+        theme_minimal(base_size = 12) +
+        theme(
+          legend.position      = "right",
+          legend.text          = element_text(size = 12),
+          legend.title         = element_text(size = 12),
+          legend.box           = "vertical",
+          axis.title           = element_text(size = 12),
+          axis.text            = element_text(size = 12),
+          panel.grid.major     = element_line(color = "grey80"),
+          panel.grid.minor     = element_blank(),
+          plot.title           = element_text(size = 14, face = "bold", hjust = 0.5),
+          plot.margin          = margin(5, 5, 5, 5)
+        )
       ggsave(file.path(output_dir, paste0(plot_filename, "_mod_plot.pdf")), p_mod, width=6.8, height=4.5)
     }
   }
@@ -330,9 +388,9 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
   return(sum_df)
 }
 # --------- Run All Meta-Analyses ---------
-enh_res <- run_meta(df_performance, "Human‑AI Creative Performance", "0_plot_performance", allow_moderator = TRUE,save_width  = 6.8, save_height = 5)
-nov_res <- run_meta(df_diversity,  "AI Effect on Creative Diversity",  "0_plot_diversity", allow_moderator = FALSE,save_width  = 6.8, save_height = 3)
-vs_res  <- run_meta(df_versus,       "Human versus AI",                   "0_plot_versus", allow_moderator = TRUE,save_width  = 6.8, save_height = 5)
+enh_res <- run_meta(df_performance, "Human‑AI Creative Performance", "plot_performance", allow_moderator = TRUE,save_width  = 6.8, save_height = 5)
+nov_res <- run_meta(df_diversity,  "AI Effect on Creative Diversity",  "plot_diversity", allow_moderator = FALSE,save_width  = 6.8, save_height = 3)
+vs_res  <- run_meta(df_versus,       "Human versus AI",                   "plot_versus", allow_moderator = TRUE,save_width  = 6.8, save_height = 5)
 
 # combined table
 all_results <- bind_rows(
