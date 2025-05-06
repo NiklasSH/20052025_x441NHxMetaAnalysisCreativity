@@ -23,6 +23,43 @@ df_diversity <- df_diversity %>%
 df_versus <- df_versus %>% 
   mutate(Date = as.Date(Date, format = ifelse(nchar(Date)==4, "%Y-%m-%d")))
 
+# --------- Computation of d ---------
+compute_cohens_d <- function(df) {
+  # 1. Means & SDs
+  if (all(c("M_treatment", "M_control", "SD_treatment", "SD_control", "n_treatment", "n_control") %in% names(df))) {
+    pooled_sd <- sqrt( ((df$n_treatment - 1) * df$SD_treatment^2 + (df$n_control - 1) * df$SD_control^2) / (df$n_treatment + df$n_control - 2) )
+    df$cohens_d <- (df$M_treatment - df$M_control) / pooled_sd
+    return(df)
+  }
+  # 2. F-value
+  if (all(c("F_value", "n_treatment", "n_control") %in% names(df))) {
+    df$cohens_d <- sqrt(df$F_value * (df$n_treatment + df$n_control) / (df$n_treatment * df$n_control))
+    return(df)
+  }
+  # 3. Chi-square
+  if (all(c("Chi_square", "n_total") %in% names(df))) {
+    df$cohens_d <- sqrt(df$Chi_square / df$n_total)
+    return(df)
+  }
+  # 4. Unstandardised beta
+  if (all(c("unstandardised_beta", "SD_beta", "n_treatment", "n_control") %in% names(df))) {
+    df$cohens_d <- df$unstandardised_beta / df$SD_beta
+    return(df)
+  }
+  # 5. Mann–Whitney U (Z value)
+  if (all(c("Z_value", "n_total") %in% names(df))) {
+    r <- df$Z_value / sqrt(df$n_total)
+    r <- pmin(pmax(r, -0.99), 0.99)  # prevent division by zero
+    df$cohens_d <- (2 * r) / sqrt(1 - r^2)
+    return(df)
+  }
+  # If none of the above, keep cohens_d as is (or NA)
+  if (!"cohens_d" %in% names(df)) {
+    df$cohens_d <- NA
+  }
+  return(df)
+}
+
 # --------- Function to Compute Sampling Variance of d ---------
 compute_vi <- function(cohens_d, n_treatment, n_control) {
   vi <- ((n_treatment + n_control) / (n_treatment * n_control)) + (cohens_d^2 / (2 * (n_treatment + n_control)))
@@ -31,7 +68,12 @@ compute_vi <- function(cohens_d, n_treatment, n_control) {
 
 # --------- Wrapper to Compute vi If Not Present ---------
 safe_calc_effects <- function(df) {
-  if (!"vi" %in% names(df)) {
+  # If cohens_d is missing, try to compute it
+  if (!"cohens_d" %in% names(df) || any(is.na(df$cohens_d))) {
+    df <- compute_cohens_d(df)
+  }
+  # If vi is missing, compute it
+  if (!"vi" %in% names(df) || any(is.na(df$vi))) {
     df$vi <- compute_vi(df$cohens_d, df$n_treatment, df$n_control)
   }
   return(df)
