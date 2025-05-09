@@ -314,7 +314,6 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     height   = plot_height_cm,
     units    = "in"
   )
-  
   ### ──  Unified violin‐plot block for all moderators ── ###
     # define every moderator including the two you already had
   # 1) Static moderators
