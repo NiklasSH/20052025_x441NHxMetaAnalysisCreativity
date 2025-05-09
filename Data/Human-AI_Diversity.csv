@@ -1,4 +1,6 @@
-﻿ID;Titel;Date;Study_Origin;Participants;Sample_Size;GenAI_Type;n_treatment;Standard Deviation 1;Mean 1;n_control;Standard Deviation 2;Mean 2;cohens_d
-N01;CreativeConnect: Supporting Reference Recombination for Graphic Design Ideation with Generative AI;2023-12-19;Asia;Business;6;T2I & T2T;16;1,418;4,75;16;1,607;4,625;0,082
-N02;Homogenization Effects of Large Language Models on Human Creative Ideation, 30, 413–425;2024-05-10;North America ;Academia;32;T2T;33;;;33;;;0,47
-N03;The Dynamics of Collective Creativity in Human-AI Social Networks;2025-02-25;Europe ;Not disclosed;1133;T2T;508;0,043;0,86;625;0,019;0,823;1,15397894
+﻿ID;Report_ID;Titel;Platform;Participants;Task_Type;n_total;GenAI_Type;GenAI_Model;Creativity_Measurement;Measurement_Evaluator;n_treatment;SD_treatment;M_treatment;n_control;SD_control;M_control;F_value;Chi_square;unstandardised_beta;SD_beta;Z_value;cohens_d
+CD01;R1;The Dynamics of Collective Creativity in Human-AI Social Networks;Prolific;Academia;creative writing;1133;T2T;GPT-4o;cosine similarity;Automated;508;0,043;0,86;625;0,019;0,823;;;;;;
+CD02;R1;Generative artificial intelligence enhances creativity but reduces the diversity of novel content;Prolific;Not disclosed;creative writing;293;T2T;GPT-4;cosine similarity;Automated;100;;;95;;;;;0,871;0,227;;
+CD02;R2;Generative artificial intelligence enhances creativity but reduces the diversity of novel content;Prolific;Not disclosed;creative writing;293;T2T;GPT-4;cosine similarity;Automated;98;;;95;;;;;0,718;0,24;;
+CD03;R1;How Experience Moderates the Impact of Generative AI Ideas on the Research Process;University;Science ;ideation research proposal;310;T2T;GPT-4;cosine similarity;Automated;210;;;100;;;;;6,05;1,29;;
+CD04;R1;If ChatGPT can do it, where is my creativity? generative AI boosts performance but diminishes experience in creative writing;Prolific;Academia;creative writing;225;T2T;2 Models;felxibility score;Human;111;0,38;7,6;114;0,25;5;;;;;;

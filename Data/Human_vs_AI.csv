@@ -1,10 +1,96 @@
-﻿ID;Titel2;Date;Study Origin;Participants;Sample_Size;GenAI_Type;n_treatment;Standard Deviation 1;Mean 1;n_control;Standard Deviation 2;Mean 2;cohens_d
-HAI01;Establishing the importance of co-creation and self-efficacy in creative collaboration with artificial intelligence;2024-08-09;North America ;Academia;98;T2T;50;2;9,45;48;4,94;18,23;-2,347454
-HAI02;Large Language Model in Creative Work: The Role of Collaboration Modality and User Expertise;2024-10-15;North America ;Business;233;T2T;116;1,913;3,974;117;1,823;4,521;-0,29277
-HAI03;Large Language Models show both individual and collective creativity comparable to humans;2024-04-12;Asia;Education;585;T2T;250;0,3896;4,919;235;1,249;5,044;-0,1368736
-HAI04;The current state of artificial intelligence generative language models is more creative than humans on divergent thinking tasks;2024-02-10;North America ;Not disclosed;151;T2T;151;3,805;7;151;3,795;6,94;0,015789
-HAI05;Artificial muses: Generative Artificial Intelligence Chatbots Have Risen to Human-Level Creativity;2023-03-21;Europe ;Academia;105;T2T;5;;;100;;;0,41
-HAI06;Revolution or inflated expectations? Exploring the impact of generative AI on ideation in a practical sustainability context;2024-10-01;Europe ;Business;56;T2T;30;0,48;3,13;30;0,52;2,73;0,79936
-HAI07;Evaluating Creative Short Story Generation in Humans and Large Language Models;2024-11-04;Europe ;Not disclosed;60;T2T;60;0,66;3,41;60;0,75;2,81;0,849335
-HAI08;Best humans still outperform artificial intelligence in a creative divergent thinking task;2023-09-14;Europe ;Business;289;T2T;33;0,39;2,91;256;0,47;2,47;0,95286
-HAI09;The Dynamics of Collective Creativity in Human-AI Social Networks;2025-02-25;Europe ;Not disclosed;1250;T2T;625;1,026;3,571;625;1,026;2,482;1,0614
+﻿ID;Report_ID;Titel;Platform;Participants;Task_Type;n_total;GenAI_Type;GenAI_Model;Creativity_Measurement;Measurement_Evaluator;n_treatment;SD_treatment;M_treatment;n_control;SD_control;M_control;F_value;df;Chi_square;unstandardised_beta;SD_beta;Z_value;cohens_d
+HAI06;R1;Revolution or inflated expectations? Exploring the impact of generative AI on ideation in a practical sustainability context;Company;Business;ideation;60;T2T;GPT-4;novelty scale;Expert;30;0,48;3,13;30;0,52;2,73;;;;;;;
+HAI19;R1;An empirical investigation of the impact of ChatGPT on creativity;Mturk;Not disclosed;ideation;200;T2T;GPT 3.5;creativity scale ;Expert;100;;;100;;;;;;;;;1,81
+HAI07;R3;Evaluating Creative Short Story Generation in Humans and Large Language Models;Prolific;Academia;creative writing;120;T2T;5 models;creativity scale ;AI;60;0,64;4,26;60;0,70;2,41;;;;;;;
+HAI05;R2;Artificial muses: Generative Artificial Intelligence Chatbots Have Risen to Human-Level Creativity;Prolific;Academia;AUT;105;T2T;5 models;creativity scale ;AI;5;;;100;;;;;;-0,18;0,13;;
+HAI08;R1;Best humans still outperform artificial intelligence in a creative divergent thinking task;Prolific;Not disclosed;AUT;1156;T2T;3 models;sematic distance;AI;132;0,03;0,95;1024;0,06;0,91;;;;;;;
+HAI04;R1;The current state of artificial intelligence generative language models is more creative than humans on divergent thinking tasks;Prolific;Academia;AUT;151;T2T;GPT-4;sematic distance;AI;151;0,02;0,84;151;0,04;0,79;;;;;;;
+HAI04;R1;The current state of artificial intelligence generative language models is more creative than humans on divergent thinking tasks;Prolific;Academia;AUT;151;T2T;GPT-4;sematic distance;AI;151;0,02;0,79;151;0,06;0,68;;;;;;;
+HAI04;R2;The current state of artificial intelligence generative language models is more creative than humans on divergent thinking tasks;Prolific;Academia;CT;151;T2T;GPT-4;sematic distance;AI;151;0,02;0,71;151;0,05;0,67;;;;;;;
+HAI04;R2;The current state of artificial intelligence generative language models is more creative than humans on divergent thinking tasks;Prolific;Academia;CT;151;T2T;GPT-4;sematic distance;AI;151;0,01;0,73;151;0,06;0,67;;;;;;;
+HAI04;R3;The current state of artificial intelligence generative language models is more creative than humans on divergent thinking tasks;Prolific;Academia;DAT;151;T2T;GPT-4;sematic distance;AI;151;3,05;84,56;151;6,13;76,95;;;;;;;
+HAI13;R1;We're Different, We're the Same: Creative Homogeneity Across LLMs;Prolific;Not disclosed;AUT;124;T2T;> 5 models;sematic distance;automated;22;;0,711;102;;0,696;;;;;;;0,1
+HAI13;R3;We're Different, We're the Same: Creative Homogeneity Across LLMs;Prolific;Not disclosed;DAT;124;T2T;> 5 models;sematic distance;automated;22;;0,801;102;;0,753;;;;;;;0,77
+HAI13;R2;We're Different, We're the Same: Creative Homogeneity Across LLMs;Prolific;Not disclosed;FF;124;T2T;> 5 models;sematic distance;automated;22;;0,603;102;;0,637;;;;;;;0,52
+HAI01;R1;Establishing the importance of co-creation and self-efficacy in creative collaboration with artificial intelligence;Prolific;Academia;creative writing;96;T2T;n.d.;creativity scale;Expert;50;2;9,45;48;4,94;18,23;;;;;;;
+HAI07;R1;Evaluating Creative Short Story Generation in Humans and Large Language Models;Prolific;Academia;creative writing;120;T2T;> 5 models;creativity scale ;Expert;60;0,55;2,33;60;0,78;3,58;;;;;;;
+HAI18;R1;One Does Not Simply Meme Alone: Evaluating Co-Creativity Between LLMs and Humans in the Generation of Humor, 1082–1092;Prolific;Academia;ideation;300;T2T;GPT-4o;creativity scale;Human;150;;;150;;;5,793;2;;;;;
+HAI07;R2;Evaluating Creative Short Story Generation in Humans and Large Language Models;Prolific;Academia;creative writing;120;T2T;> 5 models;creativity scale ;Human;60;0,78;3,65;60;0,77;2,45;;;;;;;
+HAI05;R1;Artificial muses: Generative Artificial Intelligence Chatbots Have Risen to Human-Level Creativity;Prolific;Academia;AUT;105;T2T;5 models;creativity scale ;Human;5;;;100;;;;;;-0,21;0,15;;
+HAI11;R1;The Language of Creativity: Evidence from Humans and Large Language Models;Prolific;Not disclosed;creative writing;600;T2T;GPT-3;creativity scale ;Human;300;0,72;2,85;300;0,7;2,39;;;;;;;
+HAI11;R2;The Language of Creativity: Evidence from Humans and Large Language Models;Prolific;Not disclosed;creative writing;420;T2T;GPT-3;creativity scale ;Human;120;0,52;2,94;300;0,7;2,39;;;;;;;
+HAI08;R2;Best humans still outperform artificial intelligence in a creative divergent thinking task;Prolific;Not disclosed;AUT;1156;T2T;3 models;creativity scale ;Human;132;0,39;2,91;1024;0,47;2,47;;;;;;;
+HAI02;R1;Large Language Model in Creative Work: The Role of Collaboration Modality and User Expertise;Prolific;Business;ideation;239;T2T;GPT-4;creativity scale ;Human;116;1,913;3,974;117;1,823;4,521;;;;;;;
+HAI16;R1;Artificial Creativity? Evaluating AI Against Human Performance in Creative Interpretation of Visual Stimuli;Prolific;Not disclosed;creative thinking;493;T2T;GPT-4;creativity scale ;Human;247;0,0795;0,632;256;0,0827;0,738;;;;;;;
+HAI10;R1;How AI Outperforms Humans at Creative Idea Generation;Prolific;Business;ideation;20;T2T;GPT-4;creativity scale ;Human;10;;;10;;;;;;0,343;0,089;;
+HAI09;R1;The Dynamics of Collective Creativity in Human-AI Social Networks;Prolific;Academia;creative writing;1250;T2T;GPT-4o;creativity scale ;Human;625;1,026;3,571;625;1,026;2,482;;;;;;;
+HAI20;R1;Creative and Strategic Capabilities of Generative Ai: Evidence from Large-Scale Experiments;Prolific ;Not disclosed;creative writing;912;T2T;Bard;creativity scale ;Human;216;;;688;;;;;;-0,924;0,051;;
+HAI20;R2;Creative and Strategic Capabilities of Generative Ai: Evidence from Large-Scale Experiments;Prolific ;Not disclosed;creative writing;904;T2T;GPT-4;creativity scale ;Human;224;;;688;;;;;;1,879;0,039;;
+HAI14;R1;How AI Ideas Affect the Creativity, Diversity, and Evolution of Human Ideas: Evidence From a Large, Dynamic Experiment;Public;Not disclosed;AUT;3000;T2T;GPT 3.5;originality score;automated;1500;;;1500;;;;;;0,618;0,027;;
+HAI17;R1;Can LLMs Generate Novel Research Ideas? A Large-Scale Human Study with 100+ NLP Researchers;Public;Academia;ideation;98;T2T;Claude;novelty scale;Expert;49;1,07;5,78;49;1,26;4,86;;;;;;;
+HAI21;R2;Writing, creativity, and artificial intelligence. ChatGPT in the university context;University;Academia;creative thinking;213;T2T;> 5 models;originality score;automated;20;7,818;7,8;193;8,509;9,35;;;;;;;
+HAI21;R1;Writing, creativity, and artificial intelligence. ChatGPT in the university context;University;Academia;ideation;213;T2T;> 5 models;originality score;automated;20;20,451;37,4;193;8,337;11,02;;;;;;;
+HAI15;R12;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;alpaca;creativity scale ;Expert;12;1;1,9;5;2;8;;;;;;;
+HAI15;R8;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;Bard;creativity scale ;Expert;12;2,1;3,9;5;2;8;;;;;;;
+HAI15;R3;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;bing;creativity scale ;Expert;12;1,6;7;5;2;8;;;;;;;
+HAI15;R2;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;Claude;creativity scale ;Expert;12;2,3;7,1;5;2;8;;;;;;;
+HAI15;R11;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;dolly;creativity scale ;Expert;12;2,8;4,2;5;2;8;;;;;;;
+HAI15;R4;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;GPT-3.5;creativity scale ;Expert;12;2,5;5,4;5;2;8;;;;;;;
+HAI15;R1;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;GPT-4;creativity scale ;Expert;12;1;7,6;5;2;8;;;;;;;
+HAI15;R9;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;GPT-4all;creativity scale ;Expert;12;2,2;4,1;5;2;8;;;;;;;
+HAI15;R5;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;koala;creativity scale ;Expert;12;2,3;5,8;5;2;8;;;;;;;
+HAI15;R7;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;oa;creativity scale ;Expert;12;2,1;4,9;5;2;8;;;;;;;
+HAI15;R10;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;stablelm;creativity scale ;Expert;12;1,5;3,2;5;2;8;;;;;;;
+HAI15;R6;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;17;T2T;vicuna;creativity scale ;Expert;12;1,9;5,1;5;2;8;;;;;;;
+HAI03;R3;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;Claude;novelty scale;Human;250;;;235;;;;;;;;;-0,087
+HAI03;R8;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;Claude;novelty scale;Human;250;;;235;;;;;;;;;0,133
+HAI03;R1;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;GPT-3.5;novelty scale;Human;250;;;235;;;;;;;;;-0,026
+HAI03;R6;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;GPT-3.5;novelty scale;Human;250;;;235;;;;;;;;;-0,196
+HAI03;R2;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;GPT-4;novelty scale;Human;250;;;235;;;;;;;;;-0,037
+HAI03;R7;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;GPT-4;novelty scale;Human;250;;;235;;;;;;;;;-0,046
+HAI03;R4;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;Qwen;novelty scale;Human;250;;;235;;;;;;;;;-0,313
+HAI03;R9;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;Qwen;novelty scale;Human;250;;;235;;;;;;;;;-0,066
+HAI03;R5;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;SparkDesk;novelty scale;Human;250;;;235;;;;;;;;;-0,271
+HAI03;R10;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;Divergent Thinking;585;T2T;SparkDesk;novelty scale;Human;250;;;235;;;;;;;;;-0,371
+HAI03;R37;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;0,263
+HAI03;R42;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;-0,605
+HAI03;R47;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;-0,196
+HAI03;R50;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;-1,278
+HAI03;R13;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;1,05
+HAI03;R18;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;0,569
+HAI03;R22;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;0,047
+HAI03;R27;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;0,144
+HAI03;R32;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Claude;originality scale;Human;250;;;235;;;;;;;;;-0,415
+HAI03;R35;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;-0,604
+HAI03;R40;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;-1,441
+HAI03;R45;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;-0,779
+HAI03;R48;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;-1,765
+HAI03;R11;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;-0,305
+HAI03;R16;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;-0,097
+HAI03;R20;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;-1,351
+HAI03;R25;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;1,001
+HAI03;R30;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-3.5;originality scale;Human;250;;;235;;;;;;;;;-0,309
+HAI03;R36;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;1,416
+HAI03;R41;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;-1,612
+HAI03;R46;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;-0,718
+HAI03;R49;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;-1,242
+HAI03;R12;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;1,518
+HAI03;R17;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;0,082
+HAI03;R21;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;-1,161
+HAI03;R26;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;0,51
+HAI03;R31;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;GPT-4;originality scale;Human;250;;;235;;;;;;;;;0,42
+HAI03;R38;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;Qwen;originality scale;Human;250;;;235;;;;;;;;;-0,161
+HAI03;R43;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;Qwen;originality scale;Human;250;;;235;;;;;;;;;-0,98
+HAI03;R51;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;Qwen;originality scale;Human;250;;;235;;;;;;;;;-1,663
+HAI03;R14;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Qwen;originality scale;Human;250;;;235;;;;;;;;;0,044
+HAI03;R23;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Qwen;originality scale;Human;250;;;235;;;;;;;;;-0,14
+HAI03;R28;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Qwen;originality scale;Human;250;;;235;;;;;;;;;0,293
+HAI03;R33;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;Qwen;originality scale;Human;250;;;235;;;;;;;;;-0,41
+HAI03;R39;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;SparkDesk;originality scale;Human;250;;;235;;;;;;;;;-0,034
+HAI03;R44;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;SparkDesk;originality scale;Human;250;;;235;;;;;;;;;-0,619
+HAI03;R52;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;creative writing;585;T2T;SparkDesk;originality scale;Human;250;;;235;;;;;;;;;-1,461
+HAI03;R15;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;SparkDesk;originality scale;Human;250;;;235;;;;;;;;;0,64
+HAI03;R19;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;SparkDesk;originality scale;Human;250;;;235;;;;;;;;;0,255
+HAI03;R24;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;SparkDesk;originality scale;Human;250;;;235;;;;;;;;;-0,192
+HAI03;R29;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;SparkDesk;originality scale;Human;250;;;235;;;;;;;;;-0,379
+HAI03;R34;Large Language Models show both individual and collective creativity comparable to humans;University;Academia;problem solving;585;T2T;SparkDesk;originality scale;Human;250;;;235;;;;;;;;;0,721

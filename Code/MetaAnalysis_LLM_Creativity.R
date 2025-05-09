@@ -15,51 +15,56 @@ df_performance <- read_csv2( here("Data","Human-AI_Creative_Performance.csv") )
 df_diversity   <- read_csv2( here("Data","Human-AI_Diversity.csv") )
 df_versus      <- read_csv2( here("Data","Human_vs_AI.csv") )
 
-# --------- Mutate Date ---------
-df_performance <- df_performance %>% 
-  mutate(Date = as.Date(Date, format = ifelse(nchar(Date)==4, "%Y-%m-%d")))
-df_diversity <- df_diversity %>% 
-  mutate(Date = as.Date(Date, format = ifelse(nchar(Date)==4, "%Y-%m-%d")))
-df_versus <- df_versus %>% 
-  mutate(Date = as.Date(Date, format = ifelse(nchar(Date)==4, "%Y-%m-%d")))
-
 # --------- Computation of d ---------
 compute_cohens_d <- function(df) {
-  # 1. Means & SDs
-  if (all(c("M_treatment", "M_control", "SD_treatment", "SD_control", "n_treatment", "n_control") %in% names(df))) {
-    pooled_sd <- sqrt( ((df$n_treatment - 1) * df$SD_treatment^2 + (df$n_control - 1) * df$SD_control^2) / (df$n_treatment + df$n_control - 2) )
-    df$cohens_d <- (df$M_treatment - df$M_control) / pooled_sd
-    return(df)
-  }
-  # 2. F-value
-  if (all(c("F_value", "n_treatment", "n_control") %in% names(df))) {
-    df$cohens_d <- sqrt(df$F_value * (df$n_treatment + df$n_control) / (df$n_treatment * df$n_control))
-    return(df)
-  }
-  # 3. Chi-square
-  if (all(c("Chi_square", "n_total") %in% names(df))) {
-    df$cohens_d <- sqrt(df$Chi_square / df$n_total)
-    return(df)
-  }
-  # 4. Unstandardised beta
-  if (all(c("unstandardised_beta", "SD_beta", "n_treatment", "n_control") %in% names(df))) {
-    df$cohens_d <- df$unstandardised_beta / df$SD_beta
-    return(df)
-  }
-  # 5. Mann–Whitney U (Z value)
-  if (all(c("Z_value", "n_total") %in% names(df))) {
-    r <- df$Z_value / sqrt(df$n_total)
-    r <- pmin(pmax(r, -0.99), 0.99)  # prevent division by zero
-    df$cohens_d <- (2 * r) / sqrt(1 - r^2)
-    return(df)
-  }
-  # If none of the above, keep cohens_d as is (or NA)
-  if (!"cohens_d" %in% names(df)) {
-    df$cohens_d <- NA
-  }
-  return(df)
+  # make sure every "possible" column exists
+  all.possible <- c(
+    "M_treatment","SD_treatment","M_control","SD_control","n_treatment","n_control",
+    "F_value","Chi_square","unstandardised_beta","SD_beta","Z_value","n_total",
+    "cohens_d"  # in case the author already supplied it
+  )
+  missing.cols <- setdiff(all.possible, names(df))
+  for(col in missing.cols) df[[col]] <- NA_real_
+  
+  df %>%
+    mutate(
+      cohens_d = if_else(
+        !is.na(cohens_d),   # 1) keep author‐reported d
+        cohens_d,
+        case_when(
+          # 2) Means & SDs
+          !is.na(M_treatment) & !is.na(M_control) &
+            !is.na(SD_treatment) & !is.na(SD_control) ~
+            (M_treatment - M_control) /
+            sqrt(((n_treatment - 1)*SD_treatment^2 +
+                    (n_control  - 1)*SD_control^2) /
+                   (n_treatment + n_control - 2)),
+          
+          # 3) F‐value
+          !is.na(F_value) ~
+            sqrt(F_value * (n_treatment + n_control) /
+                   (n_treatment * n_control)),
+          
+          # 4) Chi‐square
+          !is.na(Chi_square) ~
+            sqrt(Chi_square / n_total),
+          
+          # 5) Unstandardised beta
+          !is.na(unstandardised_beta) & !is.na(SD_beta) ~
+            (unstandardised_beta / SD_beta)*sqrt(1/n_control + 1/n_treatment),
+          
+          # 6) Mann–Whitney U
+          !is.na(Z_value) ~ {
+            r <- Z_value / sqrt(n_total)
+            r <- pmin(pmax(r, -0.99), 0.99)
+            (2 * r) / sqrt(1 - r^2)
+          },
+          
+          TRUE ~ NA_real_
+        )
+      )
+    )
 }
-
 # --------- Function to Compute Sampling Variance of d ---------
 compute_vi <- function(cohens_d, n_treatment, n_control) {
   vi <- ((n_treatment + n_control) / (n_treatment * n_control)) + (cohens_d^2 / (2 * (n_treatment + n_control)))
@@ -76,6 +81,15 @@ safe_calc_effects <- function(df) {
   if (!"vi" %in% names(df) || any(is.na(df$vi))) {
     df$vi <- compute_vi(df$cohens_d, df$n_treatment, df$n_control)
   }
+  # — Compute Hedges’ g correction factor J and its variance
+  df <- df %>%
+    mutate(
+      # degrees of freedom for correction
+      df_total  = n_treatment + n_control - 2,
+      J         = 1 - (3 / (4 * df_total - 1)),
+      hedges_g  = cohens_d * J,
+      vi_g      = vi * J^2
+      )
   return(df)
 }
 
@@ -84,28 +98,76 @@ df_performance <- safe_calc_effects(df_performance)
 df_diversity <- safe_calc_effects(df_diversity)
 df_versus      <- safe_calc_effects(df_versus)
 
+# ——— Aggregate by study ID ———
+df_performance_agg <- df_performance %>%
+  group_by(ID) %>%
+  summarise(
+    hedges_g = mean(hedges_g, na.rm = TRUE),
+    vi_g      = mean(vi_g,      na.rm = TRUE),
+    .groups   = "drop"
+  )
+
+df_diversity_agg <- df_diversity %>%
+  group_by(ID) %>%
+  summarise(
+    hedges_g = mean(hedges_g, na.rm = TRUE),
+    vi_g      = mean(vi_g,      na.rm = TRUE),
+    .groups   = "drop"
+  )
+
+df_versus_agg <- df_versus %>%
+  group_by(ID) %>%
+  summarise(
+    hedges_g = mean(hedges_g, na.rm = TRUE),
+    vi_g      = mean(vi_g,      na.rm = TRUE),
+    .groups   = "drop"
+  )
+
+# --------- Inspect all computed effect‐sizes ---------
+inspect_effects <- bind_rows(
+  df_performance %>%
+    select(ID, Report_ID, cohens_d, hedges_g) %>%
+    mutate(dataset = "performance"),
+  df_diversity %>%
+    select(ID, Report_ID, cohens_d, hedges_g) %>%
+    mutate(dataset = "diversity"),
+  df_versus %>%
+    select(ID, Report_ID, cohens_d, hedges_g) %>%
+    mutate(dataset = "versus")
+  )
+
+  # print to console
+  cat("\n--- Raw and corrected effect‐sizes by dataset ---\n")
+print(inspect_effects, n = 131)
+
+# optionally write to CSV for closer inspection
+  write_csv(inspect_effects, file.path(output_dir, "all_effect_sizes.csv"))
+
 # --------- Meta-Analysis Function ---------
-run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_width, save_height) {
+run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   cat("\n\n========== Meta-Analysis:", label, "==========\n\n")
   
   # 1) Fit random-effects model
-  res         <- rma(yi = cohens_d, vi = vi, data = df, method = "REML")
+  res         <- rma(yi = hedges_g, vi = vi_g, data = df, method = "REML")
   summary_res <- summary(res)
   print(summary_res)
 
   # 2) Prepare data frame for plotting
   #    -- compute per-study weight = 1/(vi + tau2)
   tau2   <- res$tau2
-  weights <- 1 / (df$vi + tau2)
+  weights <- 1 / (df$vi_g + tau2)
   
   plot_data <- df %>%
     mutate(
-      effect = cohens_d,
-      se     = sqrt(vi),
+      effect = hedges_g,
+      se     = sqrt(vi_g),
       ci.lb  = effect - 1.96 * se,
       ci.ub  = effect + 1.96 * se,
       weight = weights / sum(weights) * 100,  # percent weight
-      study  = ID
+      study  = if ("Report_ID" %in% names(df)) 
+        paste0(ID, "_", Report_ID) 
+      else 
+        as.character(ID)
     ) %>%
     arrange(desc(effect)) %>% 
     mutate(order = row_number())
@@ -131,6 +193,12 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
   # compute a little horizontal padding so text sits just outside the widest CI
   x_max <- max(plot_df$ci.ub, na.rm = TRUE)
   x_pad <- x_max + 0.05 * diff(range(plot_df$ci.lb, plot_df$ci.ub))
+  
+  # Compute dynamic height
+  n_rows        <- nrow(plot_df)
+  row_height    <- 0.4    # cm per row
+  extra_space   <- 5      # cm for margins
+  plot_height_cm <- n_rows * row_height + extra_space
   
   # 3) Build ggplot forest plot
   dark_blue <- "#1f4e79"
@@ -166,9 +234,6 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
           color = col),
       size     = 1
     ) +
-    # 5) Weight squares (sized by study weight, coloured by significance)
-    geom_point(aes(size = weight, color = col),
-               shape = 15) +
     scale_color_identity(
       guide  = "legend",
       labels = c(
@@ -178,12 +243,12 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
       ),
       breaks = c("#006400", "#8B0000", "grey40")
     ) +
-    # 6) Summary effect (Cohen’s d) dashed line (orange)
+    # 6) Summary effect (Hedges’ g) dashed line (orange)
     geom_vline(xintercept = summary_res$b[1],
                linetype   = "dashed",
                color      = "orange",
                linewidth  = 0.75) +
-    # 7) Overall d label in the same boxed style as studies
+    # 7) Overall g label in the same boxed style as studies
     geom_label(
       data = tibble(
         effect = summary_res$b[1],
@@ -192,7 +257,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
       aes(
         x     = effect,
         y     = order,
-        label = sprintf("Cohen's d = %.3f", effect)
+        label = sprintf("Hedges' g = %.3f", effect)
       ),
       fill       = "white",
       label.size = 0.2,
@@ -213,7 +278,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
       )
     ) +
     geom_text(aes(x = x_pad, y = order, label = sprintf("%.1f%%", weight)),
-              hjust = 0, size = 4) +      # show weight in right column
+              hjust = 0, size = 4) + # show weight in right column
     scale_size_continuous(
       range = c(3, 8),
       guide = "none"
@@ -229,119 +294,115 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
       legend.title         = element_text(size = 12),
       legend.box           = "vertical",        # <-- stack legends
       axis.text            = element_text(size = 12),
-      axis.text.y.left     = element_markdown(size = 12, hjust = 0),
-      axis.text.y.right  = element_blank(),
-      axis.ticks.y.right = element_blank(),
-      plot.margin          = margin(5, 20, 5, 5, "pt")
+      axis.text.y.left     = element_markdown(size = 12),
+      axis.text.y.right    = element_blank(),
+      axis.ticks.y.right   = element_blank(),
+      plot.margin          = margin(5,5,5,5, "mm")
     ) +
     coord_cartesian(clip = "off") +
     labs(
-      x     = bquote("Effect size (Cohen's " * italic(d) * ")"),
+      x     = bquote("Effect size (Hedges' " * italic(g) * ")"),
       y     = NULL,
     )
   
-  # 4) Save & display
+  # 4a) Save & display
   ggsave(
     filename = file.path(output_dir, paste0(plot_filename, "_forest.pdf")),
     plot     = p,
-    width    = save_width,
-    height   = save_height,
-    dpi      = 600
-    )
-  
-  # 5a_GenAI) Violin plot of effect‐size by GenAI_Type
-  p_violin_genai <- ggplot(plot_df, aes(x = GenAI_Type, y = effect)) +
-    geom_violin(fill    = "skyblue",
-                alpha   = 0.6,
-                size    = 0.5) +
-    geom_hline(yintercept = summary_res$b[1],
-               linetype    = "dashed",
-               color       = "orange",
-               linewidth   = 0.75,
-               show.legend = FALSE) +
-    # ▶ annotate the median of the observed effects
-    stat_summary(fun     = median,
-                 geom    = "point",
-                 shape   = 21,        # circle with fill+border
-                 size    = 4,         # outer diameter
-                 stroke  = 1,         # border thickness
-                 fill    = "white",   # inner color
-                 color   = "black",
-                 show.legend = FALSE) +
-    geom_jitter(aes(color = col),
-                width  = 0.1,
-                size   = 4) +
-    scale_color_identity() +
-    scale_y_continuous() +
-    labs(x     = NULL,
-         y     = bquote("Effect size (Cohen's " * italic(d) * ")")) +
-    theme_minimal(base_size = 12) +
-    theme(
-      axis.title           = element_text(size = 12),
-      axis.text            = element_text(size = 12),
-      axis.text.x          = element_text(size = 12, angle = 30, hjust = 1),
-      panel.grid.major     = element_line(color = "grey80"),
-      panel.grid.minor     = element_blank(),
-      plot.title           = element_text(size = 14, face = "bold", hjust = 0.5),
-      plot.margin          = margin(5, 5, 5, 5)
-    )
-  
-  ggsave(
-    filename = file.path(output_dir, paste0(plot_filename, "_violin_GenAI.pdf")),
-    plot     = p_violin_genai,
-    width    = 6.8,
-    height   = 4.5,
-    dpi      = 600
+    dpi      = 600,
+    width    = 6.5, 
+    height   = plot_height_cm,
+    units    = "in"
   )
   
-  print(p_violin_genai)
-  
-  # 5b_Part) Violin plot of effect‐size by Participants
-  p_violin_part <- ggplot(plot_df, aes(x = Participants, y = effect)) +
-    geom_violin(fill    = "skyblue",
-                alpha   = 0.6,
-                size    = 0.5) +
-    geom_hline(yintercept = summary_res$b[1],
-               linetype    = "dashed",
-               color       = "orange",
-               linewidth   = 0.75,
-               show.legend = FALSE) +
-    # ▶ annotate the median of the observed effects
-    stat_summary(fun     = median,
-                 geom    = "point",
-                 shape   = 21,        # circle with fill+border
-                 size    = 4,         # outer diameter
-                 stroke  = 1,         # border thickness
-                 fill    = "white",   # inner color
-                 color   = "black",
-                 show.legend = FALSE) +
-    geom_jitter(aes(color = col),
-                width  = 0.1,
-                size   = 4) +
-    scale_color_identity() +
-    scale_y_continuous() +
-    labs(x     = NULL,
-         y     = bquote("Effect size (Cohen's " * italic(d) * ")")) +
-    theme_minimal(base_size = 12) +
-    theme(
-      axis.title           = element_text(size = 12),
-      axis.text            = element_text(size = 12),
-      axis.text.x          = element_text(size = 12, angle = 30, hjust = 1),
-      panel.grid.major     = element_line(color = "grey80"),
-      panel.grid.minor     = element_blank(),
-      plot.title           = element_text(size = 14, face = "bold", hjust = 0.5),
-      plot.margin          = margin(5, 5, 5, 5)
-    )
-  
-  # Save & show
-  ggsave(
-    filename = file.path(output_dir, paste0(plot_filename, "_violin_participants.pdf")),
-    plot     = p_violin_part,
-    width    = 6.8,
-    height   = 4.5,
-    dpi      = 600
+  ### ──  Unified violin‐plot block for all moderators ── ###
+    # define every moderator including the two you already had
+  # 1) Static moderators
+  static_mods <- c(
+    "GenAI_Type",
+    "GenAI_Model",
+    "Participants",
+    "Platform",
+    "Task_Type",
+    "Creativity_Measurement",
+    "Measurement_Evaluator"
   )
-  print(p_violin_part)
+  present_static <- intersect(static_mods, names(df))
+  present_static <- intersect(static_mods, names(df))
+  if (length(present_static) > 0) {
+    non_na_static <- present_static[
+      vapply(df[present_static], function(col) any(!is.na(col)), logical(1))
+    ]
+  } else {
+    non_na_static <- character(0)
+  }
+  moderators <- non_na_static
+  
+  # 3) Combine
+  moderators <- c(non_na_static)
+
+  for (mod in moderators) {
+    # --- drop levels with <2 observations ---
+    # compute counts in the raw data
+      lvl_counts  <- table(plot_df[[mod]], useNA="no")
+      keep_levels <- names(lvl_counts)[lvl_counts >= 2]
+      # filter your plotting data
+        plot_data_mod <- plot_df %>%
+          filter(.data[[mod]] %in% keep_levels)
+    
+    # 1) Raw‐data violin (using plot_df from your existing code)
+      p_raw <- ggplot(plot_data_mod, aes_string(x = mod, y = "effect")) +
+          geom_violin(fill    = "skyblue",
+                      width = 0.8, 
+                      scale = "width",                 
+                      alpha   = 0.6,
+                      size    = 0.5,
+                      trim    = FALSE,
+                      adjust = 1.5) +
+          # dashed line at overall g
+          geom_hline(yintercept = summary_res$b[1],
+                     linetype    = "dashed",
+                     color       = "orange",
+                     linewidth   = 0.75,
+                     show.legend = FALSE) +
+        # show raw datapoints
+        geom_jitter(data   = plot_data_mod,
+                    aes(color = col),
+                    width  = 0.1,
+                    size   = 2) +
+        # annotate the median
+        stat_summary(fun     = median,
+                     geom    = "point",
+                     shape   = 21,
+                     size    = 2,
+                     stroke  = 1,
+                     fill    = "white",
+                     color   = "black",
+                     show.legend = FALSE) +
+          
+          scale_color_identity() +
+          scale_y_continuous() +
+          labs(
+              x     = NULL,
+              y     = bquote("Effect size (Hedges' " * italic(g) * ")")
+            ) +
+          theme_minimal(base_size = 12) +
+          theme(
+              axis.title      = element_text(size = 12),
+              axis.text       = element_text(size = 12),
+              axis.text.x     = element_text(angle = 30, hjust = 1),
+              panel.grid.major= element_line(color = "grey80"),
+              panel.grid.minor= element_blank(),
+              plot.title      = element_text(size = 14, face = "bold", hjust = 0.5),
+              plot.margin     = margin(5, 5, 5, 5)
+            )
+      ggsave(
+          filename = file.path(output_dir, paste0(plot_filename, "_violin_", mod, ".pdf")),
+          plot     = p_raw,
+          dpi      = 600,
+          width = 6.5
+        )
+          }
   
   # 5c) Export summary table (and moderator tables) as PDF
   
@@ -368,71 +429,104 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE, save_widt
     )
   )
   
-  # 5d) Funnel plot — observed
-  pdf(file.path(output_dir, paste0(plot_filename, "_funnel_observed.pdf")), width = 6.8, height = 5)
-  funnel(res, main = NULL)
-  dev.off()
-
-  # 5e) Funnel plot — trim-and-fill
-  tf <- trimfill(res)
-  pdf(file.path(output_dir, paste0(plot_filename, "_funnel_trimfill.pdf")), width = 6.8, height = 5)
-  funnel(tf, main = NULL, col = "#8B0000")
-  dev.off()
-
-  # 6) Moderators: GenAI_Type & Participants
-  if(allow_moderator == TRUE){
-    mods <- list()
-    # GenAI_Type
-    if(n_distinct(df$GenAI_Type)>1){
-      mg <- rma(yi=cohens_d, vi=vi, mods=~factor(GenAI_Type), data=df, method="REML")
-      mg_df <- tidy(mg, conf.int=TRUE) %>% filter(term!="(Intercept)")
-      mods[["GenAI_Type"]] <- mg_df
-      # table
-      g_grob <- tableGrob(mg_df %>% select(term, estimate, std.error, conf.low, conf.high, p.value),
-                          rows=NULL, theme=ttheme_minimal(core=list(fg_params=list(hjust=0))))
-      ggsave(file.path(output_dir, paste0(plot_filename, "_mod_GenAI_Type_table.pdf")), g_grob, width=6.8, height=3)
-    }
-    # Participants
-    if(n_distinct(df$Participants)>1){
-      mp <- rma(yi=cohens_d, vi=vi, mods=~factor(Participants), data=df, method="REML")
-      mp_df <- tidy(mp, conf.int=TRUE) %>% filter(term!="(Intercept)")
-      mods[["Participants"]] <- mp_df
-      # table
-      p_grob <- tableGrob(mp_df %>% select(term, estimate, std.error, conf.low, conf.high, p.value),
-                          rows=NULL, theme=ttheme_minimal(core=list(fg_params=list(hjust=0))))
-      ggsave(file.path(output_dir, paste0(plot_filename, "_mod_Participants_table.pdf")), p_grob, width=6.8, height=3)
-    }
-    # combined moderator plot
-    if(length(mods)>0){
-      mod_all <- bind_rows(mods, .id="Moderator")
-      p_mod <- ggplot(mod_all, aes(x=term, y=estimate, color=Moderator)) +
-        geom_pointrange(aes(ymin=conf.low, ymax=conf.high), position=position_dodge(width=0.7)) +
-        geom_hline(yintercept=0, linetype="dashed") + coord_flip() +
-        labs(x=NULL,
-             y=bquote("Effect size (" * italic(d) * ")")) +
-        theme_minimal(base_size = 12) +
-        theme(
-          legend.position      = "right",
-          legend.text          = element_text(size = 12),
-          legend.title         = element_text(size = 12),
-          legend.box           = "vertical",
-          axis.title           = element_text(size = 12),
-          axis.text            = element_text(size = 12),
-          panel.grid.major     = element_line(color = "grey80"),
-          panel.grid.minor     = element_blank(),
-          plot.title           = element_text(size = 14, face = "bold", hjust = 0.5),
-          plot.margin          = margin(5, 5, 5, 5)
+  # make a reusable table‐theme with larger text & padding
+  tt <- ttheme_minimal(
+    base_size = 12,                       # default font size
+    padding   = unit(c(4, 4), "mm"),      # cell padding goes here, not inside fg_params
+    core      = list(
+      fg_params = list(
+        fontsize = 12,                    # core text size
+        hjust    = 0                      # left‐align
+      )
+    ),
+    colhead   = list(
+      fg_params = list(
+        fontsize = 14,                    # header text size
+        fontface = "bold"
+      )
+    )
+  )
+  
+  # 6) Moderators
+  if (allow_moderator) {
+    # reusable big-font table theme
+    tt <- ttheme_minimal(
+      base_size = 12,
+      padding   = unit(c(4,4), "mm"),
+      core      = list(fg_params = list(fontsize = 12, hjust = 0)),
+      colhead   = list(fg_params = list(fontsize = 14, fontface = "bold"))
+    )
+    
+    # which moderator variables to test
+    mod_vars <- c(
+      "GenAI_Type", "Participants", "Platform", "Task_Type",
+      "GenAI_Model", "Creativity_Measurement", "Measurement_Evaluator"
+    )
+    
+    for (mod in mod_vars) {
+      # only if it exists in df and has more than one level:
+      if (mod %in% names(df) && n_distinct(df[[mod]], na.rm = TRUE) > 1) {
+        # 1) fit meta-regression
+        form    <- as.formula(paste0("~ factor(", mod, ")"))
+        fit     <- rma(yi = hedges_g, vi = vi_g, mods = form, data = df, method = "REML")
+        fit_df  <- tidy(fit, conf.int = TRUE) %>% filter(term != "(Intercept)")
+        # 3) make & save plot
+        p_mod <- ggplot(fit_df, aes(x = term, y = estimate)) +
+          geom_pointrange(aes(ymin = conf.low, ymax = conf.high), size = 0.6) +
+          geom_hline(yintercept = 0, linetype = "dashed") +
+          coord_flip() +
+          labs(
+            x = NULL,
+            y = bquote("Hedges’" ~ italic(g) ~ "effect")
+          ) +
+          theme_minimal(base_size = 12) +
+          theme(
+            axis.title   = element_text(size = 13),
+            axis.text    = element_text(size = 11),
+            plot.margin  = margin(5,5,5,5,"mm")
+          )
+        # dynamic plot sizing:
+        n_rows     <- nrow(fit_df)
+        row_h_cm   <- 0.5             # cm per row
+        extra_cm   <- 3               # cm top+bottom
+        plot_h_cm  <- n_rows * row_h_cm + extra_cm
+        ggsave(
+          file.path(output_dir, paste0(plot_filename, "_mod_", mod, "_plot.pdf")),
+          p_mod,
+          width  = 6.5, 
+          height = plot_h_cm / 2.54,
+          units  = "in",
+          dpi    = 600,
         )
-      ggsave(file.path(output_dir, paste0(plot_filename, "_mod_plot.pdf")), p_mod, width=6.8, height=4.5)
+      }
     }
   }
-  
   return(sum_df)
 }
 # --------- Run All Meta-Analyses ---------
-enh_res <- run_meta(df_performance, "Human‑AI Creative Performance", "plot_performance", allow_moderator = TRUE,save_width  = 6.8, save_height = 5)
-nov_res <- run_meta(df_diversity,  "AI Effect on Creative Diversity",  "plot_diversity", allow_moderator = FALSE,save_width  = 6.8, save_height = 3)
-vs_res  <- run_meta(df_versus,       "Human versus AI",                   "plot_versus", allow_moderator = TRUE,save_width  = 6.8, save_height = 5)
+enh_res <- run_meta(df_performance, "Human‑AI Creative Performance", "plot_performance_raw", allow_moderator = TRUE)
+nov_res <- run_meta(df_diversity,  "AI Effect on Creative Diversity",  "plot_diversity_raw", allow_moderator = TRUE)
+vs_res  <- run_meta(df_versus,       "Human versus AI",                   "plot_versus_raw", allow_moderator = TRUE)
+
+# ——— Now run the same meta‐analysis on the aggregated study‐means ———
+enh_res_agg <- run_meta(
+  df_performance_agg,
+  "Aggregated Human-AI Creative Performance",
+  "plot_performance_agg",
+  allow_moderator = TRUE
+)
+nov_res_agg <- run_meta(
+  df_diversity_agg,
+  "Aggregated AI Effect on Creative Diversity",
+  "plot_diversity_agg",
+  allow_moderator = TRUE
+)
+vs_res_agg  <- run_meta(
+  df_versus_agg,
+  "Aggregated Human versus AI",
+  "plot_versus_agg",
+  allow_moderator = TRUE
+)
 
 # combined table
 all_results <- bind_rows(
@@ -472,9 +566,49 @@ all_grob <- tableGrob(
 )
 
 ggsave(
-  filename = file.path(output_dir, "all_meta_analyses.pdf"),
+  filename = file.path(output_dir, "all_meta_analyses_raw.pdf"),
   plot     = all_grob,
-  width    = 6.8,
-  height   = 2.5,
   dpi      = 600
   )
+# combined table for aggregated data
+all_results_agg <- bind_rows(
+  enh_res_agg %>% mutate(Analysis="Performance_agg"),
+  nov_res_agg %>% mutate(Analysis="Diversity_agg"),
+  vs_res_agg  %>% mutate(Analysis="Human_vs_AI_agg")
+) %>%
+  mutate(
+    Signif   = case_when(
+      pval <  .001 ~ "***",
+      pval <  .01  ~ "**",
+      pval <  .05  ~ "*",
+      TRUE         ~ ""
+    ),
+    `p (sig)` = paste0(format(pval, nsmall=3), Signif)
+  )
+
+all_grob_agg <- tableGrob(
+  all_results_agg %>% 
+    select(
+      Analysis,
+      Effect,
+      SE,
+      ci95,        
+      `p (sig)`,
+      Q,
+      df,
+      pQ,          
+      i2,          
+      tau2
+    ),
+  rows  = NULL,
+  theme = ttheme_minimal(
+    core    = list(fg_params = list(hjust=0, x=0.1, fontsize=10)),
+    colhead = list(fg_params = list(fontface="bold", fontsize=11))
+  )
+)
+
+ggsave(
+  filename = file.path(output_dir, "all_meta_analyses_agg.pdf"),
+  plot     = all_grob_agg,
+  dpi      = 600
+)
