@@ -5,6 +5,8 @@ library(ggtext)
 library(gridExtra)
 library(broom)
 library(here)
+library(knitr)
+library(xtable)
 
 # --------- Ensure Results directory exists ---------
 output_dir <- "Plots"
@@ -196,8 +198,8 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   
   # Compute dynamic height
   n_rows        <- nrow(plot_df)
-  row_height    <- 0.4    # cm per row
-  extra_space   <- 5      # cm for margins
+  row_height    <- 0.25    # cm per row
+  extra_space   <- 3      # cm for margins
   plot_height_cm <- n_rows * row_height + extra_space
   
   # 3) Build ggplot forest plot
@@ -269,7 +271,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     scale_y_reverse(
       breaks = plot_df$order,
       labels = as.character(plot_df$study),
-      expand = expansion(add = c(0.5, 0.5)),     # gives 0.5 “row” of padding at top & bottom
+      expand = expansion(add = c(0.3, 0.3)),     # gives 0.5 “row” of padding at top & bottom
       sec.axis = sec_axis(
         transform = ~ .,
         breaks    = plot_df$order,
@@ -564,11 +566,24 @@ all_grob <- tableGrob(
   )
 )
 
-ggsave(
-  filename = file.path(output_dir, "all_meta_analyses_raw.pdf"),
-  plot     = all_grob,
-  dpi      = 600
-  )
+raw_tab <- all_results %>% 
+  select(Analysis, Effect, SE, ci95, `p (sig)`, Q, df, pQ, i2, tau2)
+
+raw_xt <- xtable(
+  raw_tab,
+  caption = "Raw‐level meta‐analysis results for each outcome. Hedges’ $g$, standard errors, 95\\% CIs, p‐values, and heterogeneity statistics (Q, df, pQ, I\\textsuperscript{2}, $\\tau^2$).",
+  label   = "tab:meta_raw",
+  align   = c("l", "l", rep("r", 9))
+)
+
+print(
+  raw_xt,
+  type           = "latex",
+  file           = file.path(output_dir, "all_meta_analyses_raw.tex"),
+  include.rownames = FALSE,
+  booktabs       = TRUE,
+  sanitize.text.function = identity  # allows your LaTeX in ci95 (with $…$) to pass through
+)
 # combined table for aggregated data
 all_results_agg <- bind_rows(
   enh_res_agg %>% mutate(Analysis="Performance_agg"),
@@ -606,8 +621,19 @@ all_grob_agg <- tableGrob(
   )
 )
 
-ggsave(
-  filename = file.path(output_dir, "all_meta_analyses_agg.pdf"),
-  plot     = all_grob_agg,
-  dpi      = 600
+agg_tab <- all_results_agg %>% 
+  select(Analysis, Effect, SE, ci95, `p (sig)`, Q, df, pQ, i2, tau2)
+agg_xt <- xtable(
+  agg_tab,
+  caption = "Aggregated meta‐analysis results across tasks/datasets. Hedges’ $g$, standard errors, 95\\% CIs, p‐values, and heterogeneity statistics (Q, df, pQ, I\\textsuperscript{2}, $\\tau^2$).",
+  label   = "tab:meta_agg",
+  align   = c("l", "l", rep("r", 9))
+)
+print(
+  agg_xt,
+  type           = "latex",
+  file           = file.path(output_dir, "all_meta_analyses_agg.tex"),
+  include.rownames = FALSE,
+  booktabs       = TRUE,
+  sanitize.text.function = identity
 )
