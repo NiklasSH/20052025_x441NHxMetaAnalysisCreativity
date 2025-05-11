@@ -21,7 +21,7 @@ df_versus      <- read_csv2( here("Data","Human_vs_AI.csv") )
 compute_cohens_d <- function(df) {
   # make sure every "possible" column exists
   all.possible <- c(
-    "M_treatment","SD_treatment","M_control","SD_control","n_treatment","n_control",
+    "M_treatment","SD_treatment","SE_treatment","M_control","SD_control","SE_control","n_treatment","n_control",
     "F_value","Chi_square","unstandardised_beta","SD_beta","Z_value","n_total",
     "cohens_d"  # in case the author already supplied it
   )
@@ -42,25 +42,22 @@ compute_cohens_d <- function(df) {
                     (n_control  - 1)*SD_control^2) /
                    (n_treatment + n_control - 2)),
           
-          # 3) F‐value
+          # 3) Means & SEs
+          !is.na(M_treatment) & !is.na(M_control) &
+            !is.na(SE_treatment) & !is.na(SE_control) ~
+            (M_treatment - M_control) /
+            sqrt(((n_treatment - 1)*(SE_treatment*sqrt(n_treatment))^2 +
+                    (n_control  - 1)*(SE_control*sqrt(n_control))^2) /
+                   (n_treatment + n_control - 2)),
+          
+          # 4) F‐value
           !is.na(F_value) ~
             sqrt(F_value * (n_treatment + n_control) /
                    (n_treatment * n_control)),
           
-          # 4) Chi‐square
-          !is.na(Chi_square) ~
-            sqrt(Chi_square / n_total),
-          
           # 5) Unstandardised beta
           !is.na(unstandardised_beta) & !is.na(SD_beta) ~
             (unstandardised_beta / SD_beta)*sqrt(1/n_control + 1/n_treatment),
-          
-          # 6) Mann–Whitney U
-          !is.na(Z_value) ~ {
-            r <- Z_value / sqrt(n_total)
-            r <- pmin(pmax(r, -0.99), 0.99)
-            (2 * r) / sqrt(1 - r^2)
-          },
           
           TRUE ~ NA_real_
         )
@@ -153,7 +150,69 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   res         <- rma(yi = hedges_g, vi = vi_g, data = df, method = "REML")
   summary_res <- summary(res)
   print(summary_res)
+  
+  # — Change #1: Influence diagnostics on raw data only
+  if (allow_moderator) {
+    inf <- influence(res)
+    print(inf)
+    # — Change #4a: save influence plot to PDF
+    pdf(
+      file.path(output_dir,
+                paste0(plot_filename, "_influence_diagnostics.pdf")),
+      width  = 6.5,
+      height = 6.5
+      )
+    plot(inf)
+    dev.off()
+  }
+  
+  # — Change #2: Leave-one-out sensitivity analysis
+  sens <- leave1out(res)
+  print(sens)
+  est <- sens$estimate  
+  pdf(
+    file.path(output_dir,
+                  paste0(plot_filename, "_leave1out_sensitivity.pdf")),
+    width  = 6.5,
+    height = 6.5
+    )  
+  plot(est,  
+       type = "b",  
+       xlab = "Omitted study",  
+       ylab = "Pooled estimate")  
+  dev.off()# basic leave-one-out plot
 
+  # — Change #3: Publication-bias checks only if k ≥ 10
+  if (res$k >= 10) {
+    egger_test <- regtest(res, model = "rma")
+    print(egger_test)
+    
+    # raw funnel
+    pdf(file.path(output_dir, paste0(plot_filename, "_funnel_plot.pdf")),
+        width = 6.5, height = 6.5)
+    funnel(res)
+    dev.off()
+    
+    # trimmed-and-filled funnel
+    tf <- trimfill(res)
+    print(summary(tf))
+    orig_k <- res$k
+    pdf(file.path(output_dir, paste0(plot_filename, "_funnel_trimfill.pdf")),
+        width = 6.5, height = 6.5)
+    funnel(res, pch = 19, col = "black")
+    if (tf$k0 > 0) {
+      pts <- (orig_k + 1):(orig_k + tf$k0)
+      points(
+        x   = tf$yi[pts],
+        y   = sqrt(tf$vi[pts]),
+        pch = 21, bg = "red", col = "red"
+      )
+    }
+    dev.off()
+  } else {
+    message("Skipping Egger’s test and funnel/trim‐and‐fill (k = ", res$k, " < 10).")
+  }
+  
   # 2) Prepare data frame for plotting
   #    -- compute per-study weight = 1/(vi + tau2)
   tau2   <- res$tau2
@@ -234,7 +293,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
           y    = order - 0.3,
           yend = order + 0.3,
           color = col),
-      size     = 1
+      linewidth = 1
     ) +
     scale_color_identity(
       guide  = "legend",
@@ -323,7 +382,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     "GenAI_Type",
     "GenAI_Model",
     "Participants",
-    "Platform",
+    "Recruitment_Source",
     "Task_Type",
     "Creativity_Measurement",
     "Measurement_Evaluator"
@@ -357,7 +416,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
                       width = 0.8, 
                       scale = "width",                 
                       alpha   = 0.6,
-                      size    = 0.5,
+                      linewidth    = 0.5,
                       trim    = FALSE,
                       adjust = 1.5) +
           # dashed line at overall g
@@ -460,16 +519,26 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     
     # which moderator variables to test
     mod_vars <- c(
-      "GenAI_Type", "Participants", "Platform", "Task_Type",
+      "GenAI_Type", "Participants", "Recruitment_Source", "Task_Type",
       "GenAI_Model", "Creativity_Measurement", "Measurement_Evaluator"
     )
     
     for (mod in mod_vars) {
       # only if it exists in df and has more than one level:
       if (mod %in% names(df) && n_distinct(df[[mod]], na.rm = TRUE) > 1) {
+        # — drop any levels with <2 observations (use same data as violin)
+        lvl_counts  <- table(plot_df[[mod]], useNA="no")
+        keep_levels <- names(lvl_counts)[lvl_counts >= 2]
+        # if fewer than 2 levels remain, skip this moderator altogether
+        if (length(keep_levels) < 2) {
+          message("Skipping moderator ", mod, ": only ", length(keep_levels),
+                  " level(s) after filtering.")
+          next
+        }
+        df_mod      <- df %>% filter(.data[[mod]] %in% keep_levels)
         # 1) fit meta-regression
-        form    <- as.formula(paste0("~ factor(", mod, ")"))
-        fit     <- rma(yi = hedges_g, vi = vi_g, mods = form, data = df, method = "REML")
+        form    <- as.formula(paste0("~ 0 + factor(", mod, ")"))
+        fit     <- rma(yi = hedges_g, vi = vi_g, mods = form, data = df_mod, method = "REML")
         fit_df  <- tidy(fit, conf.int = TRUE) %>% filter(term != "(Intercept)")
         # 3) make & save plot
         p_mod <- ggplot(fit_df, aes(x = term, y = estimate)) +
@@ -637,3 +706,62 @@ print(
   booktabs       = TRUE,
   sanitize.text.function = identity
 )
+# — dataset-Labels hinzufügen
+df_performance <- df_performance %>% mutate(dataset = "Creative Performance")
+df_diversity   <- df_diversity   %>% mutate(dataset = "Creative Diversity")
+df_versus      <- df_versus      %>% mutate(dataset = "Human_vs_AI")
+
+# --------- 1 große Tabelle aller Moderatoren ---------
+moderators <- c(
+  "GenAI_Type",
+  "GenAI_Model",
+  "Participants",
+  "Recruitment_Source",
+  "Task_Type",
+  "Creativity_Measurement",
+  "Measurement_Evaluator"
+)
+
+df_all <- bind_rows(df_performance, df_diversity, df_versus)
+
+combined_table <- bind_rows(
+  lapply(moderators, function(mod) {
+    df_all %>%
+      filter(!is.na(.data[[mod]])) %>%
+      group_by(
+        Moderator      = mod,
+        Characteristic = .data[[mod]]
+      ) %>%
+      summarise(
+        Creative_Performance = sum(dataset == "Creative Performance"),
+        Creative_Diversity   = sum(dataset == "Creative Diversity"),
+        Human_vs_AI          = sum(dataset == "Human_vs_AI"),
+        Total                = n(),
+        .groups = "drop"
+      )
+  })
+)
+
+# — für jeden Moderator eine eigene LaTeX-Tabelle —
+for(mod in moderators) {
+  sub <- combined_table %>% 
+    filter(Moderator == mod) %>% 
+    select(-Moderator) %>% 
+    arrange(desc(Total))
+    
+  
+  xt <- xtable(
+    sub,
+    label   = paste0("tab:", mod),
+    align   = c("l","l","r","r","r","r")
+  )
+  print(
+    xt,
+    type             = "latex",
+    file             = file.path(output_dir, paste0("table_", mod, ".tex")),
+    include.rownames = FALSE,
+    booktabs         = TRUE,
+    caption.placement= "top",
+    sanitize.text.function = identity
+  )
+}
