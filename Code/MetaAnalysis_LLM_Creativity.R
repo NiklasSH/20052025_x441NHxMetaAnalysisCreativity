@@ -231,6 +231,8 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   extra_space   <- 3      # cm for margins
   plot_height_cm <- n_rows * row_height + extra_space
   
+  
+  
   # 3) Build ggplot forest plot
   dark_blue <- "#1f4e79"
   p <- ggplot(plot_df, aes(x = effect, y = order)) +
@@ -365,6 +367,28 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     ]
     moderators <- non_na_static
     
+    # —— new block: compute global y‐limits across all moderators ——
+    y_ranges <- lapply(moderators, function(mod) {
+      dat <- plot_df
+      if (mod %in% names(exclude_levels)) {
+        dat <- dat %>% filter(!.data[[mod]] %in% exclude_levels[[mod]])
+      }
+      lvl_cts     <- table(dat[[mod]], useNA = "no")
+      keep_lvls   <- names(lvl_cts)[lvl_cts >= 2]
+      dat_filtered <- dat %>% filter(.data[[mod]] %in% keep_lvls) %>% droplevels()
+      range(dat_filtered$effect, na.rm = TRUE)
+    })
+    y_min <- min(sapply(y_ranges, `[`, 1))
+    y_max <- max(sapply(y_ranges, `[`, 2))
+    # (optionally, pad the limits by 5%)
+    pad   <- 0.1 * (y_max - y_min)
+    y_min <- y_min - pad
+    y_max <- y_max + pad
+    # ————————————————————————————————————————————————
+    
+    # pick a single y for all labels, 50% up into the padded area:
+    label_y  <- y_min + pad * 0.5
+    
     # 3) Loop over each moderator
     for (mod in moderators) {
       # start from the full plot_df each time
@@ -389,6 +413,15 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       } else {
         NULL        # no y‑label for the other moderators
       }
+      
+      # 1) compute for each level a “bottom‐inside” y position
+      label_df <- plot_data_mod %>%
+        group_by(across(all_of(mod))) %>%
+        summarize(
+          y_pos = quantile(effect, 0.05, na.rm=TRUE),
+          .groups = "drop"
+        ) %>%
+        rename(lvl = !!mod)
       
       # 3c) build & save your violin
       p_raw <- ggplot(plot_data_mod, aes_string(x = mod, y = "effect")) +
@@ -422,15 +455,37 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
           fill   = "white"
         ) +
         scale_color_identity() +
+        # 1) get rid of the built-in x–axis text & ticks
+        scale_x_discrete(labels = NULL) +
+        theme(
+          axis.text.x  = element_blank(),
+          axis.ticks.x = element_blank()
+        ) +
+        
+        # 2) one coord_cartesian to fix the y‐range
+        coord_cartesian(ylim = c(y_min, y_max), expand = FALSE) +
+        
+        # 3) add boxed labels at the bottom center of each violin
+        geom_label(
+          data = label_df,
+          aes(x = lvl, label = lvl),
+          y        = label_y,
+          size     = 3,
+          hjust    = 0.5,
+          angle    = 0,       # or 30 if you really like it
+          fill     = "white", # white background
+          label.size = 0.3    # width of the box border
+        ) +
+        
         labs(
           x = NULL,
           y = y_lab
         ) +
         theme_minimal(base_size = 12) +
         theme(
-          axis.text.x     = element_text(angle = 30, hjust = 1),
           panel.grid.minor= element_blank()
-        )
+        )+
+        coord_cartesian(ylim = c(y_min, y_max))
       
       ggsave(
         filename = file.path(output_dir, paste0(plot_filename, "_violin_", mod, ".pdf")),
