@@ -22,8 +22,8 @@ compute_cohens_d <- function(df) {
   # make sure every "possible" column exists
   all.possible <- c(
     "M_treatment","SD_treatment","SE_treatment","M_control","SD_control","SE_control","n_treatment","n_control",
-    "F_value","Chi_square","unstandardised_beta","SD_beta","Z_value","n_total",
-    "cohens_d"  # in case the author already supplied it
+    "F_value","Chi_square","unstandardised_beta","SE_beta","Z_value","n_total",
+    "cohens_d", "t_value"  # in case the author already supplied it
   )
   missing.cols <- setdiff(all.possible, names(df))
   for(col in missing.cols) df[[col]] <- NA_real_
@@ -52,12 +52,15 @@ compute_cohens_d <- function(df) {
           
           # 4) F‐value
           !is.na(F_value) ~
-            sqrt(F_value * (n_treatment + n_control) /
-                   (n_treatment * n_control)),
+            sqrt(F_value) * sqrt(1/n_treatment + 1/n_control),
           
           # 5) Unstandardised beta
-          !is.na(unstandardised_beta) & !is.na(SD_beta) ~
-            (unstandardised_beta / SD_beta)*sqrt(1/n_control + 1/n_treatment),
+          !is.na(unstandardised_beta) & !is.na(SE_beta) ~
+            (unstandardised_beta / SE_beta)*sqrt(1/n_control + 1/n_treatment),
+          
+          # 5) t_value
+          !is.na(t_value) ~
+            t_value*sqrt(1/n_control + 1/n_treatment),
           
           TRUE ~ NA_real_
         )
@@ -97,31 +100,6 @@ df_performance <- safe_calc_effects(df_performance)
 df_diversity <- safe_calc_effects(df_diversity)
 df_versus      <- safe_calc_effects(df_versus)
 
-# ——— Aggregate by study ID ———
-df_performance_agg <- df_performance %>%
-  group_by(ID) %>%
-  summarise(
-    hedges_g = mean(hedges_g, na.rm = TRUE),
-    vi_g      = mean(vi_g,      na.rm = TRUE),
-    .groups   = "drop"
-  )
-
-df_diversity_agg <- df_diversity %>%
-  group_by(ID) %>%
-  summarise(
-    hedges_g = mean(hedges_g, na.rm = TRUE),
-    vi_g      = mean(vi_g,      na.rm = TRUE),
-    .groups   = "drop"
-  )
-
-df_versus_agg <- df_versus %>%
-  group_by(ID) %>%
-  summarise(
-    hedges_g = mean(hedges_g, na.rm = TRUE),
-    vi_g      = mean(vi_g,      na.rm = TRUE),
-    .groups   = "drop"
-  )
-
 # --------- Inspect all computed effect‐sizes ---------
 inspect_effects <- bind_rows(
   df_performance %>%
@@ -134,10 +112,6 @@ inspect_effects <- bind_rows(
     select(ID, Report_ID, cohens_d, hedges_g) %>%
     mutate(dataset = "versus")
   )
-
-  # print to console
-  cat("\n--- Raw and corrected effect‐sizes by dataset ---\n")
-print(inspect_effects, n = 131)
 
 # optionally write to CSV for closer inspection
   write_csv(inspect_effects, file.path(output_dir, "all_effect_sizes.csv"))
@@ -225,11 +199,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       ci.lb  = effect - 1.96 * se,
       ci.ub  = effect + 1.96 * se,
       weight = weights / sum(weights) * 100,  # percent weight
-      study  = if ("Report_ID" %in% names(df)) 
-        paste0(ID, "_", Report_ID) 
-      else 
-        as.character(ID)
-    ) %>%
+      study  = paste0(ID, "_", Report_ID)) %>%
     arrange(desc(effect)) %>% 
     mutate(order = row_number())
   
@@ -375,94 +345,101 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     height   = plot_height_cm,
     units    = "in"
   )
-  ### ──  Unified violin‐plot block for all moderators ── ###
-    # define every moderator including the two you already had
-  # 1) Static moderators
-  static_mods <- c(
-    "GenAI_Type",
-    "GenAI_Model",
-    "Participants",
-    "Recruitment_Source",
-    "Task_Type",
-    "Creativity_Measurement",
-    "Measurement_Evaluator"
-  )
-  present_static <- intersect(static_mods, names(df))
-  present_static <- intersect(static_mods, names(df))
-  if (length(present_static) > 0) {
+  # 0) If this is the diversity‐dataset, bail out immediately
+  if (identical(deparse(substitute(df)), "df_diversity")) {
+    message("Skipping violin‐plot generation for df_diversity.")
+  } else {
+    
+    # 1) Define for each moderator which values to drop
+    exclude_levels <- list(
+      GenAI_Model = c("2 Models", "3 models", "5 models", "> 5 models", "n.d."),
+      Participants = "Not disclosed",
+      Task_Type   = "ideation other"
+    )
+    
+    # 2) Identify which of your static mods are actually present & non‐NA
+    static_mods   <- c("GenAI_Model", "Participants", "Task_Type")
+    present_static <- intersect(static_mods, names(df))
     non_na_static <- present_static[
       vapply(df[present_static], function(col) any(!is.na(col)), logical(1))
     ]
-  } else {
-    non_na_static <- character(0)
-  }
-  moderators <- non_na_static
-  
-  # 3) Combine
-  moderators <- c(non_na_static)
-
-  for (mod in moderators) {
-    # --- drop levels with <2 observations ---
-    # compute counts in the raw data
-      lvl_counts  <- table(plot_df[[mod]], useNA="no")
-      keep_levels <- names(lvl_counts)[lvl_counts >= 2]
-      # filter your plotting data
-        plot_data_mod <- plot_df %>%
-          filter(.data[[mod]] %in% keep_levels)
+    moderators <- non_na_static
     
-    # 1) Raw‐data violin (using plot_df from your existing code)
+    # 3) Loop over each moderator
+    for (mod in moderators) {
+      # start from the full plot_df each time
+      plot_data_mod <- plot_df
+      
+      # 3a) drop the unwanted levels for *this* moderator, if any
+      if (mod %in% names(exclude_levels)) {
+        plot_data_mod <- plot_data_mod %>%
+          filter(!.data[[mod]] %in% exclude_levels[[mod]])
+      }
+      
+      # 3b) now drop any levels with fewer than 2 obs
+      lvl_counts  <- table(plot_data_mod[[mod]], useNA="no")
+      keep_levels <- names(lvl_counts)[lvl_counts >= 2]
+      plot_data_mod <- plot_data_mod %>%
+        filter(.data[[mod]] %in% keep_levels) %>%
+        droplevels()
+      
+      # --- decide whether this plot should get a y‑axis label ----
+      y_lab <- if (mod == "GenAI_Model") {
+        bquote("Effect size (Hedges' " * italic(g) * ")")
+      } else {
+        NULL        # no y‑label for the other moderators
+      }
+      
+      # 3c) build & save your violin
       p_raw <- ggplot(plot_data_mod, aes_string(x = mod, y = "effect")) +
-          geom_violin(fill    = "skyblue",
-                      width = 0.8, 
-                      scale = "width",                 
-                      alpha   = 0.6,
-                      linewidth    = 0.5,
-                      trim    = FALSE,
-                      adjust = 1.5) +
-          # dashed line at overall g
-          geom_hline(yintercept = summary_res$b[1],
-                     linetype    = "dashed",
-                     color       = "orange",
-                     linewidth   = 0.75,
-                     show.legend = FALSE) +
-        # show raw datapoints
-        geom_jitter(data   = plot_data_mod,
-                    aes(color = col),
-                    width  = 0.1,
-                    size   = 2) +
-        # annotate the median
-        stat_summary(fun     = median,
-                     geom    = "point",
-                     shape   = 21,
-                     size    = 2,
-                     stroke  = 1,
-                     fill    = "white",
-                     color   = "black",
-                     show.legend = FALSE) +
-          
-          scale_color_identity() +
-          scale_y_continuous() +
-          labs(
-              x     = NULL,
-              y     = bquote("Effect size (Hedges' " * italic(g) * ")")
-            ) +
-          theme_minimal(base_size = 12) +
-          theme(
-              axis.title      = element_text(size = 12),
-              axis.text       = element_text(size = 12),
-              axis.text.x     = element_text(angle = 30, hjust = 1),
-              panel.grid.major= element_line(color = "grey80"),
-              panel.grid.minor= element_blank(),
-              plot.title      = element_text(size = 14, face = "bold", hjust = 0.5),
-              plot.margin     = margin(5, 5, 5, 5)
-            )
-      ggsave(
-          filename = file.path(output_dir, paste0(plot_filename, "_violin_", mod, ".pdf")),
-          plot     = p_raw,
-          dpi      = 600,
-          width = 6.5
+        geom_violin(
+          fill      = "skyblue",
+          width     = 0.8,
+          scale     = "width",
+          alpha     = 0.6,
+          linewidth = 0.5,
+          trim      = FALSE,
+          adjust    = 1.5
+        ) +
+        geom_hline(
+          yintercept = summary_res$b[1],
+          linetype   = "dashed",
+          color      = "orange",
+          linewidth  = 0.75
+        ) +
+        geom_jitter(
+          data   = plot_data_mod,
+          aes(color = col),
+          width  = 0.1,
+          size   = 2
+        ) +
+        stat_summary(
+          fun    = median,
+          geom   = "point",
+          shape  = 21,
+          size   = 2,
+          stroke = 1,
+          fill   = "white"
+        ) +
+        scale_color_identity() +
+        labs(
+          x = NULL,
+          y = y_lab
+        ) +
+        theme_minimal(base_size = 12) +
+        theme(
+          axis.text.x     = element_text(angle = 30, hjust = 1),
+          panel.grid.minor= element_blank()
         )
-          }
+      
+      ggsave(
+        filename = file.path(output_dir, paste0(plot_filename, "_violin_", mod, ".pdf")),
+        plot     = p_raw,
+        dpi      = 600,
+        width    = 6.5
+      )
+    }
+  }
   
   # 5c) Export summary table (and moderator tables) as PDF
   
@@ -578,26 +555,6 @@ enh_res <- run_meta(df_performance, "Human‑AI Creative Performance", "plot_per
 nov_res <- run_meta(df_diversity,  "AI Effect on Creative Diversity",  "plot_diversity_raw", allow_moderator = TRUE)
 vs_res  <- run_meta(df_versus,       "Human versus AI",                   "plot_versus_raw", allow_moderator = TRUE)
 
-# ——— Now run the same meta‐analysis on the aggregated study‐means ———
-enh_res_agg <- run_meta(
-  df_performance_agg,
-  "Aggregated Human-AI Creative Performance",
-  "plot_performance_agg",
-  allow_moderator = TRUE
-)
-nov_res_agg <- run_meta(
-  df_diversity_agg,
-  "Aggregated AI Effect on Creative Diversity",
-  "plot_diversity_agg",
-  allow_moderator = TRUE
-)
-vs_res_agg  <- run_meta(
-  df_versus_agg,
-  "Aggregated Human versus AI",
-  "plot_versus_agg",
-  allow_moderator = TRUE
-)
-
 # combined table
 all_results <- bind_rows(
   enh_res  %>% mutate(Analysis="Performance"),
@@ -653,59 +610,7 @@ print(
   booktabs       = TRUE,
   sanitize.text.function = identity  # allows your LaTeX in ci95 (with $…$) to pass through
 )
-# combined table for aggregated data
-all_results_agg <- bind_rows(
-  enh_res_agg %>% mutate(Analysis="Performance_agg"),
-  nov_res_agg %>% mutate(Analysis="Diversity_agg"),
-  vs_res_agg  %>% mutate(Analysis="Human_vs_AI_agg")
-) %>%
-  mutate(
-    Signif   = case_when(
-      pval <  .001 ~ "***",
-      pval <  .01  ~ "**",
-      pval <  .05  ~ "*",
-      TRUE         ~ ""
-    ),
-    `p (sig)` = paste0(format(pval, nsmall=3), Signif)
-  )
 
-all_grob_agg <- tableGrob(
-  all_results_agg %>% 
-    select(
-      Analysis,
-      Effect,
-      SE,
-      ci95,        
-      `p (sig)`,
-      Q,
-      df,
-      pQ,          
-      i2,          
-      tau2
-    ),
-  rows  = NULL,
-  theme = ttheme_minimal(
-    core    = list(fg_params = list(hjust=0, x=0.1, fontsize=10)),
-    colhead = list(fg_params = list(fontface="bold", fontsize=11))
-  )
-)
-
-agg_tab <- all_results_agg %>% 
-  select(Analysis, Effect, SE, ci95, `p (sig)`, Q, df, pQ, i2, tau2)
-agg_xt <- xtable(
-  agg_tab,
-  caption = "Aggregated meta‐analysis results across tasks/datasets. Hedges’ $g$, standard errors, 95\\% CIs, p‐values, and heterogeneity statistics (Q, df, pQ, I\\textsuperscript{2}, $\\tau^2$).",
-  label   = "tab:meta_agg",
-  align   = c("l", "l", rep("r", 9))
-)
-print(
-  agg_xt,
-  type           = "latex",
-  file           = file.path(output_dir, "all_meta_analyses_agg.tex"),
-  include.rownames = FALSE,
-  booktabs       = TRUE,
-  sanitize.text.function = identity
-)
 # — dataset-Labels hinzufügen
 df_performance <- df_performance %>% mutate(dataset = "Creative Performance")
 df_diversity   <- df_diversity   %>% mutate(dataset = "Creative Diversity")
