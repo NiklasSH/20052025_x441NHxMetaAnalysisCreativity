@@ -1,0 +1,5 @@
+# A tibble: 2 × 8
+  term                         type    estimate std.error statistic p.value conf.low conf.high
+  <chr>                        <chr>      <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+1 factor(Participants)Academia summary   -1.26      0.548     -2.30  0.0214    -2.34    -0.187
+2 factor(Participants)Business summary   -0.866     0.542     -1.60  0.110     -1.93     0.197

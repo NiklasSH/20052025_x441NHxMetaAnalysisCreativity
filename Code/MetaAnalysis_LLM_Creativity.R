@@ -128,61 +128,41 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   # — Change #1: Influence diagnostics on raw data only
   if (allow_moderator) {
     inf <- influence(res)
-    print(inf)
-    # — Change #4a: save influence plot to PDF
-    pdf(
+    sink(
       file.path(output_dir,
-                paste0(plot_filename, "_influence_diagnostics.pdf")),
-      width  = 6.5,
-      height = 6.5
-      )
-    plot(inf)
-    dev.off()
+                paste0(plot_filename, "_influence_diagnostics.txt"))
+    )
+    print(inf)
+    sink()
   }
   
   # — Change #2: Leave-one-out sensitivity analysis
   sens <- leave1out(res)
-  print(sens)
-  est <- sens$estimate  
-  pdf(
+  sink(
     file.path(output_dir,
-                  paste0(plot_filename, "_leave1out_sensitivity.pdf")),
-    width  = 6.5,
-    height = 6.5
-    )  
-  plot(est,  
-       type = "b",  
-       xlab = "Omitted study",  
-       ylab = "Pooled estimate")  
-  dev.off()# basic leave-one-out plot
+              paste0(plot_filename, "_leave1out_sensitivity.txt"))
+  )
+  print(sens)
+  sink()
 
   # — Change #3: Publication-bias checks only if k ≥ 10
   if (res$k >= 10) {
     egger_test <- regtest(res, model = "rma")
+    sink(
+      file.path(output_dir,
+                paste0(plot_filename, "_funnel_egger_test.txt"))
+    )
     print(egger_test)
-    
-    # raw funnel
-    pdf(file.path(output_dir, paste0(plot_filename, "_funnel_plot.pdf")),
-        width = 6.5, height = 6.5)
-    funnel(res)
-    dev.off()
+    sink()
     
     # trimmed-and-filled funnel
     tf <- trimfill(res)
+    sink(
+      file.path(output_dir,
+                paste0(plot_filename, "_funnel_trimm_fill.txt"))
+    )
     print(summary(tf))
-    orig_k <- res$k
-    pdf(file.path(output_dir, paste0(plot_filename, "_funnel_trimfill.pdf")),
-        width = 6.5, height = 6.5)
-    funnel(res, pch = 19, col = "black")
-    if (tf$k0 > 0) {
-      pts <- (orig_k + 1):(orig_k + tf$k0)
-      points(
-        x   = tf$yi[pts],
-        y   = sqrt(tf$vi[pts]),
-        pch = 21, bg = "red", col = "red"
-      )
-    }
-    dev.off()
+    sink()
   } else {
     message("Skipping Egger’s test and funnel/trim‐and‐fill (k = ", res$k, " < 10).")
   }
@@ -548,18 +528,23 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       core      = list(fg_params = list(fontsize = 12, hjust = 0)),
       colhead   = list(fg_params = list(fontsize = 14, fontface = "bold"))
     )
-    
-    # which moderator variables to test
-    mod_vars <- c(
-      "GenAI_Type", "Participants", "Recruitment_Source", "Task_Type",
-      "GenAI_Model", "Creativity_Measurement", "Measurement_Evaluator"
+    # 1) Define for each moderator which values to drop
+    exclude_levels <- list(
+      GenAI_Model = c("2 Models", "3 models", "5 models", "> 5 models", "n.d."),
+      Participants = "Not disclosed",
+      Task_Type   = "ideation other"
     )
+    # which moderator variables to test
+    mod_vars <- c("Participants", "Task_Type", "GenAI_Model")
     
     for (mod in mod_vars) {
       # only if it exists in df and has more than one level:
       if (mod %in% names(df) && n_distinct(df[[mod]], na.rm = TRUE) > 1) {
         # — drop any levels with <2 observations (use same data as violin)
-        lvl_counts  <- table(plot_df[[mod]], useNA="no")
+        tmp_df <- if (mod %in% names(exclude_levels)) {
+          plot_df %>% filter(! .data[[mod]] %in% exclude_levels[[mod]])
+        } else plot_df
+        lvl_counts <- table(tmp_df[[mod]], useNA="no")
         keep_levels <- names(lvl_counts)[lvl_counts >= 2]
         # if fewer than 2 levels remain, skip this moderator altogether
         if (length(keep_levels) < 2) {
@@ -567,39 +552,23 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
                   " level(s) after filtering.")
           next
         }
-        df_mod      <- df %>% filter(.data[[mod]] %in% keep_levels)
+        # first drop the unwanted levels, then keep only levels with ≥2 obs
+        df_mod <- if (mod %in% names(exclude_levels)) {
+          df %>% filter(! .data[[mod]] %in% exclude_levels[[mod]])
+        } else df
+        df_mod <- df_mod %>% filter(.data[[mod]] %in% keep_levels)
         # 1) fit meta-regression
         form    <- as.formula(paste0("~ 0 + factor(", mod, ")"))
         fit     <- rma(yi = hedges_g, vi = vi_g, mods = form, data = df_mod, method = "REML")
         fit_df  <- tidy(fit, conf.int = TRUE) %>% filter(term != "(Intercept)")
-        # 3) make & save plot
-        p_mod <- ggplot(fit_df, aes(x = term, y = estimate)) +
-          geom_pointrange(aes(ymin = conf.low, ymax = conf.high), size = 0.6) +
-          geom_hline(yintercept = 0, linetype = "dashed") +
-          coord_flip() +
-          labs(
-            x = NULL,
-            y = bquote("Hedges’" ~ italic(g) ~ "effect")
-          ) +
-          theme_minimal(base_size = 12) +
-          theme(
-            axis.title   = element_text(size = 13),
-            axis.text    = element_text(size = 11),
-            plot.margin  = margin(5,5,5,5,"mm")
+        sink(
+          file.path(
+            output_dir,
+            paste0(plot_filename, "_mod_", mod, "_summary.txt")
           )
-        # dynamic plot sizing:
-        n_rows     <- nrow(fit_df)
-        row_h_cm   <- 0.5             # cm per row
-        extra_cm   <- 3               # cm top+bottom
-        plot_h_cm  <- n_rows * row_h_cm + extra_cm
-        ggsave(
-          file.path(output_dir, paste0(plot_filename, "_mod_", mod, "_plot.pdf")),
-          p_mod,
-          width  = 6.5, 
-          height = plot_h_cm / 2.54,
-          units  = "in",
-          dpi    = 600,
         )
+        print(fit_df)
+        sink()
       }
     }
   }

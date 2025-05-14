@@ -1,0 +1,9 @@
+
+Regression Test for Funnel Plot Asymmetry
+
+Model:     mixed-effects meta-regression model
+Predictor: standard error
+
+Test for Funnel Plot Asymmetry: z = -0.6235, p = 0.5330
+Limit Estimate (as sei -> 0):   b =  0.5429 (CI: -0.3452, 1.4309)
+

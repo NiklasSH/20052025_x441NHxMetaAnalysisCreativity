@@ -1,0 +1,5 @@
+# A tibble: 2 × 8
+  term                       type    estimate std.error statistic  p.value conf.low conf.high
+  <chr>                      <chr>      <dbl>     <dbl>     <dbl>    <dbl>    <dbl>     <dbl>
+1 factor(GenAI_Model)GPT-3.5 summary   0.587      0.156     3.75  0.000178    0.280     0.893
+2 factor(GenAI_Model)GPT-4   summary   0.0889     0.159     0.558 0.577      -0.223     0.401

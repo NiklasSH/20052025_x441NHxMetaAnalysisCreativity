@@ -1,0 +1,10 @@
+# A tibble: 7 × 8
+  term                         type    estimate std.error statistic p.value conf.low conf.high
+  <chr>                        <chr>      <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+1 factor(GenAI_Model)Bard      summary -1.57        0.722   -2.17   0.0301    -2.98     -0.151
+2 factor(GenAI_Model)Claude    summary  0.00818     0.260    0.0315 0.975     -0.501     0.517
+3 factor(GenAI_Model)GPT-3.5   summary -0.157       0.220   -0.713  0.476     -0.589     0.275
+4 factor(GenAI_Model)GPT-4     summary  0.499       0.187    2.67   0.00770    0.132     0.865
+5 factor(GenAI_Model)GPT-4o    summary  0.482       0.416    1.16   0.247     -0.333     1.30 
+6 factor(GenAI_Model)Qwen      summary -0.376       0.308   -1.22   0.222     -0.980     0.228
+7 factor(GenAI_Model)SparkDesk summary -0.171       0.292   -0.583  0.560     -0.744     0.403
