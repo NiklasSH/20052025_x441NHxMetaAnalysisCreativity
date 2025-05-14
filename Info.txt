@@ -1,0 +1,25 @@
+Reviewer-Vorschläge für Meta-Analyse im CSCW/CHI:
+
+1. Jakob Schoeffer (University of Groningen)
+   - Assistant Professor
+   - Expertise: Responsible AI, Explainable AI, Human-Centered AI, Meta-Analysen von HCI-Studien
+
+2. Max Schemmer
+   - (bitte Institution prüfen)
+   - Expertise: Meta-Analyse, kollaborative Studien
+
+3. Patrick Hemmer
+   - (bitte Institution prüfen)
+   - Expertise: Meta-Analyse, Methodologie in CSCW
+
+4. Maximilian Nitsche
+   - (bitte Institution prüfen)
+   - Expertise: Meta-Analyse, quantitative Auswertung
+
+5. Sebastian Derboven (KU Leuven)
+   - Associate Professor
+   - Expertise: quantitative Analysen, Meta-Analysen in HCI
+
+6. Claudia Müller-Birn (Universität Münster)
+   - Professorin für Informatik und Gesellschaft
+   - Expertise: Meta-Analysen digitaler Zusammenarbeit
