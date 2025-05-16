@@ -31,10 +31,11 @@ compute_cohens_d <- function(df) {
   df %>%
     mutate(
       cohens_d = if_else(
-        !is.na(cohens_d),   # 1) keep author‐reported d
+        !is.na(cohens_d),   
+        # (1) Keep author-reported d
         cohens_d,
         case_when(
-          # 2) Means & SDs
+          # (2) Means & Standard Deviations
           !is.na(M_treatment) & !is.na(M_control) &
             !is.na(SD_treatment) & !is.na(SD_control) ~
             (M_treatment - M_control) /
@@ -42,7 +43,7 @@ compute_cohens_d <- function(df) {
                     (n_control  - 1)*SD_control^2) /
                    (n_treatment + n_control - 2)),
           
-          # 3) Means & SEs
+          # (3) Means & Standard Errors
           !is.na(M_treatment) & !is.na(M_control) &
             !is.na(SE_treatment) & !is.na(SE_control) ~
             (M_treatment - M_control) /
@@ -50,15 +51,15 @@ compute_cohens_d <- function(df) {
                     (n_control  - 1)*(SE_control*sqrt(n_control))^2) /
                    (n_treatment + n_control - 2)),
           
-          # 4) F‐value
+          # (4) F-value
           !is.na(F_value) ~
             sqrt(F_value) * sqrt(1/n_treatment + 1/n_control),
           
-          # 5) Unstandardised beta
+          # (5) Unstandardised beta
           !is.na(unstandardised_beta) & !is.na(SE_beta) ~
             (unstandardised_beta / SE_beta)*sqrt(1/n_control + 1/n_treatment),
           
-          # 5) t_value
+          # (6) t-value
           !is.na(t_value) ~
             t_value*sqrt(1/n_control + 1/n_treatment),
           
@@ -120,12 +121,12 @@ inspect_effects <- bind_rows(
 run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   cat("\n\n========== Meta-Analysis:", label, "==========\n\n")
   
-  # 1) Fit random-effects model
+  # (1) Fit random-effects model
   res         <- rma(yi = hedges_g, vi = vi_g, data = df, method = "REML")
   summary_res <- summary(res)
   print(summary_res)
   
-  # — Change #1: Influence diagnostics on raw data only
+  # (2) Influence diagnostics
   if (allow_moderator) {
     inf <- influence(res)
     sink(
@@ -136,7 +137,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     sink()
   }
   
-  # — Change #2: Leave-one-out sensitivity analysis
+  # (3) Leave-one-out sensitivity analysis
   sens <- leave1out(res)
   sink(
     file.path(output_dir,
@@ -145,7 +146,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   print(sens)
   sink()
 
-  # — Change #3: Publication-bias checks only if k ≥ 10
+  # (4) Publication-bias checks (k ≥ 10)
   if (res$k >= 10) {
     egger_test <- regtest(res, model = "rma")
     sink(
@@ -167,8 +168,8 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     message("Skipping Egger’s test and funnel/trim‐and‐fill (k = ", res$k, " < 10).")
   }
   
-  # 2) Prepare data frame for plotting
-  #    -- compute per-study weight = 1/(vi + tau2)
+  # (5) Prepare data frame for plotting
+  # (5a) Compute per-study weights = 1 / (vi + tau2)
   tau2   <- res$tau2
   weights <- 1 / (df$vi_g + tau2)
   
@@ -183,7 +184,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     arrange(desc(effect)) %>% 
     mutate(order = row_number())
   
-  # 3b) classify each study’s significance & choose a colour
+  # (6) Classify each study’s significance
   plot_data <- plot_data %>%
     mutate(
       sign = case_when(
@@ -205,31 +206,29 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   x_max <- max(plot_df$ci.ub, na.rm = TRUE)
   x_pad <- x_max + 0.05 * diff(range(plot_df$ci.lb, plot_df$ci.ub))
   
-  # Compute dynamic height
+  # (5b) Compute dynamic plot height based on row count
   n_rows        <- nrow(plot_df)
   row_height    <- 0.25    # cm per row
   extra_space   <- 3      # cm for margins
   plot_height_cm <- n_rows * row_height + extra_space
   
-  
-  
-  # 3) Build ggplot forest plot
+  # (7) Build forest plot
   dark_blue <- "#1f4e79"
   p <- ggplot(plot_df, aes(x = effect, y = order)) +
     
-    # 1) Overall CI band (orange, 30% opacity)
+    # (7.1) Overall CI band (orange, 30% opacity)
     annotate("rect",
              xmin = summary_res$ci.lb,
              xmax = summary_res$ci.ub,
              ymin = -Inf, ymax = Inf,
              fill = "orange", alpha = 0.3) +
-    # 2) black zero‐line
+    # (7.2) Black zero-line
     geom_vline(xintercept = 0,
                color      = "black",
                linewidth  = 0.7,
                alpha = 0.6) +
   
-    # 3) Study‐level CI segments, coloured by significance (alpha = 0.3)
+    # (7.3) Study-level CI segments (coloured by significance)
     geom_segment(aes(x    = ci.lb,
                      xend = ci.ub,
                      y    = order,
@@ -238,7 +237,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
                  size  = 4,
                  alpha = 0.3) +
     
-    # 4) Small vertical lines at each study’s observed effect size
+    # (7.4) Small vertical lines at each study’s effect size
     geom_segment(
       aes(x    = effect,
           xend = effect,
@@ -256,12 +255,12 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       ),
       breaks = c("#006400", "#8B0000", "grey40")
     ) +
-    # 6) Summary effect (Hedges’ g) dashed line (orange)
+    # (7.5) Summary effect (Hedges’ g) dashed line
     geom_vline(xintercept = summary_res$b[1],
                linetype   = "dashed",
                color      = "orange",
                linewidth  = 0.75) +
-    # 7) Overall g label in the same boxed style as studies
+    # (7.6) Overall g label (boxed)
     geom_label(
       data = tibble(
         effect = summary_res$b[1],
@@ -278,7 +277,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       size       = 3.5,
       hjust      = 0.5
     ) +
-    # 8) axes & theme tweaks
+    # (7.7) Axes & theme tweaks
     scale_y_reverse(
       breaks = plot_df$order,
       labels = as.character(plot_df$study),
@@ -318,7 +317,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       y     = NULL,
     )
   
-  # 4a) Save & display
+  # (8) Save and display forest plot
   ggsave(
     filename = file.path(output_dir, paste0(plot_filename, "_forest.pdf")),
     plot     = p,
@@ -327,19 +326,19 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     height   = plot_height_cm,
     units    = "in"
   )
-  # 0) If this is the diversity‐dataset, bail out immediately
+  # (9) Skip violin plots for diversity dataset
   if (identical(deparse(substitute(df)), "df_diversity")) {
     message("Skipping violin‐plot generation for df_diversity.")
   } else {
     
-    # 1) Define for each moderator which values to drop
+    # (10) Define exclusion levels for moderators
     exclude_levels <- list(
       GenAI_Model = c("2 Models", "3 models", "5 models", "> 5 models", "n.d."),
       Participants = "Not disclosed",
       Task_Type   = "ideation other"
     )
     
-    # 2) Identify which of your static mods are actually present & non‐NA
+    # (11) Identify present, non-NA moderators
     static_mods   <- c("GenAI_Model", "Participants", "Task_Type")
     present_static <- intersect(static_mods, names(df))
     non_na_static <- present_static[
@@ -347,7 +346,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     ]
     moderators <- non_na_static
     
-    # —— new block: compute global y‐limits across all moderators ——
+    # (12) Compute global y-axis limits
     y_ranges <- lapply(moderators, function(mod) {
       dat <- plot_df
       if (mod %in% names(exclude_levels)) {
@@ -366,35 +365,34 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     y_max <- y_max + pad
     # ————————————————————————————————————————————————
     
-    # pick a single y for all labels, 50% up into the padded area:
+    # (13) Compute label position inside plots
     label_y  <- y_min + pad * 0.5
     
-    # 3) Loop over each moderator
+    # (14) Loop over moderators for violin plots
     for (mod in moderators) {
-      # start from the full plot_df each time
       plot_data_mod <- plot_df
       
-      # 3a) drop the unwanted levels for *this* moderator, if any
+      # (14a) Drop unwanted levels
       if (mod %in% names(exclude_levels)) {
         plot_data_mod <- plot_data_mod %>%
           filter(!.data[[mod]] %in% exclude_levels[[mod]])
       }
       
-      # 3b) now drop any levels with fewer than 2 obs
+      # (14b) Filter by ≥2 obs
       lvl_counts  <- table(plot_data_mod[[mod]], useNA="no")
       keep_levels <- names(lvl_counts)[lvl_counts >= 2]
       plot_data_mod <- plot_data_mod %>%
         filter(.data[[mod]] %in% keep_levels) %>%
         droplevels()
       
-      # --- decide whether this plot should get a y‑axis label ----
+      # (14c) Determine if a y-axis label is needed
       y_lab <- if (mod == "GenAI_Model") {
         bquote("Effect size (Hedges' " * italic(g) * ")")
       } else {
         NULL        # no y‑label for the other moderators
       }
       
-      # 1) compute for each level a “bottom‐inside” y position
+      # (14d) Compute bottom-inside y-position for each level
       label_df <- plot_data_mod %>%
         group_by(across(all_of(mod))) %>%
         summarize(
@@ -403,7 +401,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
         ) %>%
         rename(lvl = !!mod)
       
-      # 3c) build & save your violin
+      # (14e) Build and save the violin plot
       p_raw <- ggplot(plot_data_mod, aes_string(x = mod, y = "effect")) +
         geom_violin(
           fill      = "skyblue",
@@ -435,17 +433,17 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
           fill   = "white"
         ) +
         scale_color_identity() +
-        # 1) get rid of the built-in x–axis text & ticks
+        # Get rid of the built-in x–axis text & ticks
         scale_x_discrete(labels = NULL) +
         theme(
           axis.text.x  = element_blank(),
           axis.ticks.x = element_blank()
         ) +
         
-        # 2) one coord_cartesian to fix the y‐range
+        # One coord_cartesian to fix the y‐range
         coord_cartesian(ylim = c(y_min, y_max), expand = FALSE) +
         
-        # 3) add boxed labels at the bottom center of each violin
+        # Add boxed labels at the bottom center of each violin
         geom_label(
           data = label_df,
           aes(x = lvl, label = lvl),
@@ -476,8 +474,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     }
   }
   
-  # 5c) Export summary table (and moderator tables) as PDF
-  
+  # (15) Export summary and moderator tables as PDF
   #  – main summary
   sum_df <- tibble::tibble(
     k      = res$k,
@@ -519,7 +516,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     )
   )
   
-  # 6) Moderators
+  # (16) Run moderator meta-regressions
   if (allow_moderator) {
     # reusable big-font table theme
     tt <- ttheme_minimal(
@@ -528,13 +525,13 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       core      = list(fg_params = list(fontsize = 12, hjust = 0)),
       colhead   = list(fg_params = list(fontsize = 14, fontface = "bold"))
     )
-    # 1) Define for each moderator which values to drop
+    # (16a) Define exclusion levels for regression
     exclude_levels <- list(
       GenAI_Model = c("2 Models", "3 models", "5 models", "> 5 models", "n.d."),
       Participants = "Not disclosed",
       Task_Type   = "ideation other"
     )
-    # which moderator variables to test
+    # (16b) Specify which moderators to test
     mod_vars <- c("Participants", "Task_Type", "GenAI_Model")
     
     for (mod in mod_vars) {
@@ -557,7 +554,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
           df %>% filter(! .data[[mod]] %in% exclude_levels[[mod]])
         } else df
         df_mod <- df_mod %>% filter(.data[[mod]] %in% keep_levels)
-        # 1) fit meta-regression
+        # (16c) Fit moderator meta-regression
         form    <- as.formula(paste0("~ 0 + factor(", mod, ")"))
         fit     <- rma(yi = hedges_g, vi = vi_g, mods = form, data = df_mod, method = "REML")
         fit_df  <- tidy(fit, conf.int = TRUE) %>% filter(term != "(Intercept)")
@@ -635,12 +632,12 @@ print(
   sanitize.text.function = identity  # allows your LaTeX in ci95 (with $…$) to pass through
 )
 
-# — dataset-Labels hinzufügen
+# Add dataset labels
 df_performance <- df_performance %>% mutate(dataset = "Creative Performance")
 df_diversity   <- df_diversity   %>% mutate(dataset = "Creative Diversity")
 df_versus      <- df_versus      %>% mutate(dataset = "Human_vs_AI")
 
-# --------- 1 große Tabelle aller Moderatoren ---------
+# --------- Combined table of all moderators ---------
 moderators <- c(
   "GenAI_Type",
   "GenAI_Model",
@@ -671,7 +668,7 @@ combined_table <- bind_rows(
   })
 )
 
-# — für jeden Moderator eine eigene LaTeX-Tabelle —
+# — For each moderator, create a separate LaTeX table —
 for(mod in moderators) {
   sub <- combined_table %>% 
     filter(Moderator == mod) %>% 
