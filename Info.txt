@@ -4,12 +4,12 @@ Reviewer-Vorschläge für Meta-Analyse im CSCW/CHI:
    - Assistant Professor
    - Expertise: Responsible AI, Explainable AI, Human-Centered AI, Meta-Analysen von HCI-Studien
 
-2. Max Schemmer
-   - (bitte Institution prüfen)
+2. Max Schemmer (Karlsruhe Service Research Institute (KSRI))
+   - Research Associate
    - Expertise: Meta-Analyse, kollaborative Studien
 
-3. Patrick Hemmer
-   - (bitte Institution prüfen)
+3. Patrick Hemmer (Karlsruhe Digital Service Research & Innovation Hub (KSRI))
+   - Research Associate
    - Expertise: Meta-Analyse, Methodologie in CSCW
 
 4. Maximilian Nitsche
