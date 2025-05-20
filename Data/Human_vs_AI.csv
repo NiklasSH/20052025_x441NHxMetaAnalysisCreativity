@@ -11,13 +11,13 @@ HAI01;R9;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Crea
 HAI01;R10;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;10;T2T;oa;creativity scale ;Expert;5;;2,1;4,9;5;;2;8;;;;;;;
 HAI01;R11;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;10;T2T;Bard;creativity scale ;Expert;5;;2,1;3,9;5;;2;8;;;;;;;
 HAI01;R12;A Confederacy of Models: a Comprehensive Evaluation of LLMs on Creative Writing;University;Academia;creative writing;10;T2T;GPT-4all;creativity scale ;Expert;5;;2,2;4,1;5;;2;8;;;;;;;
-HAI02;R1;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Lay people;AUT;400;T2T;GPT-3.5;novelty scale;Human;100;;;;100;;;;;;5,32;;;;
-HAI02;R2;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Lay people;AUT;400;T2T;GPT-4o;novelty scale;Human;100;;;;100;;;;;;8,89;;;;
-HAI02;R3;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Lay people;AUT;400;T2T;GPT-4;novelty scale;Human;100;;;;100;;;;;;5,1;;;;
-HAI02;R4;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Lay people;AUT;400;T2T;GPT-3.5;novelty scale;Human;100;;;;100;;;;;;4,68;;;;
-HAI02;R5;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Lay people;AUT;400;T2T;GPT-4o;novelty scale;Human;100;;;;100;;;;;;4,25;;;;
-HAI02;R6;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Lay people;AUT;400;T2T;GPT-4;novelty scale;Human;100;;;;100;;;;;;4,75;;;;
-HAI03;R1;An empirical investigation of the impact of ChatGPT on creativity;Prolific;Lay people;ideation other;200;T2T;GPT-3.5;creativity scale ;Expert;66;;;;67;;;;;;;;;;1,81
+HAI02;R1;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Laypeople;AUT;400;T2T;GPT-3.5;novelty scale;Human;100;;;;100;;;;;;5,32;;;;
+HAI02;R2;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Laypeople;AUT;400;T2T;GPT-4o;novelty scale;Human;100;;;;100;;;;;;8,89;;;;
+HAI02;R3;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Laypeople;AUT;400;T2T;GPT-4;novelty scale;Human;100;;;;100;;;;;;5,1;;;;
+HAI02;R4;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Laypeople;AUT;400;T2T;GPT-3.5;novelty scale;Human;100;;;;100;;;;;;4,68;;;;
+HAI02;R5;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Laypeople;AUT;400;T2T;GPT-4o;novelty scale;Human;100;;;;100;;;;;;4,25;;;;
+HAI02;R6;AI Delivers Creative Output but Struggles with Thinking Processes;Public;Laypeople;AUT;400;T2T;GPT-4;novelty scale;Human;100;;;;100;;;;;;4,75;;;;
+HAI03;R1;An empirical investigation of the impact of ChatGPT on creativity;Prolific;Laypeople;ideation other;200;T2T;GPT-3.5;creativity scale ;Expert;66;;;;67;;;;;;;;;;1,81
 HAI04;R1;Artificial Creativity? Evaluating AI Against Human Performance in Creative Interpretation of Visual Stimuli;Prolific;Not disclosed;creative thinking;493;T2T;GPT-4;creativity scale ;Human;247;;0,0795;0,632;246;;0,0827;0,738;;;;;;;
 HAI05;R1;Artificial muses: Generative Artificial Intelligence Chatbots Have Risen to Human-Level Creativity;Prolific;Academia;AUT;105;T2T;5 models;creativity scale ;Human;5;;;;100;;;;;;;-0,21;0,15;;
 HAI06;R1;Best humans still outperform artificial intelligence in a creative divergent thinking task;Prolific;Not disclosed;AUT;1156;T2T;3 models;creativity scale ;Human;132;;0,39;2,91;1024;;0,47;2,47;;;;;;;

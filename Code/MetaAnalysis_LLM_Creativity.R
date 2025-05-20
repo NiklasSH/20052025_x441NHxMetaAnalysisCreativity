@@ -1,21 +1,37 @@
-# --------- Load Libraries ---------
-library(metafor)
-library(tidyverse)
-library(ggtext)
-library(gridExtra)
-library(broom)
-library(here)
-library(knitr)
-library(xtable)
+# Prepare Work Environment
+# Clear all ---------------------------------------------------------------
+rm(list=ls())
 
-# --------- Ensure Results directory exists ---------
-output_dir <- "Plots"
+# --------- Install & Load Libraries ---------
+packages <- c(
+  "metafor", "tidyverse", "ggtext", "gridExtra", "broom", "knitr", "xtable", "rstudioapi"
+)
+
+install_and_load <- function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
+
+invisible(lapply(packages, install_and_load))
+
+# Get the directory one level above the script (i.e., the project root)
+if (rstudioapi::isAvailable()) {
+  project_root <- dirname(dirname(rstudioapi::getActiveDocumentContext()$path))
+} else {
+  project_root <- dirname(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+}
+
+data_dir   <- file.path(project_root, "Data")
+output_dir <- file.path(project_root, "Plots")
+
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
-# --------- Load Datasets ---------
-df_performance <- read_csv2( here("Data","Human-AI_Creative_Performance.csv") )
-df_diversity   <- read_csv2( here("Data","Human-AI_Diversity.csv") )
-df_versus      <- read_csv2( here("Data","Human_vs_AI.csv") )
+# Load Datasets
+df_performance <- read_csv2(file.path(data_dir, "Human-AI_Creative_Performance.csv"))
+df_diversity   <- read_csv2(file.path(data_dir, "Human-AI_Diversity.csv"))
+df_versus      <- read_csv2(file.path(data_dir, "Human_vs_AI.csv"))
 
 # --------- Computation of d ---------
 compute_cohens_d <- function(df) {
@@ -135,6 +151,14 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     )
     print(inf)
     sink()
+    pdf(
+      file.path(output_dir,
+                paste0(plot_filename, "_influence_diagnostics.pdf")),
+      width  = 6.5,
+      height = 6.5
+    )
+    plot(inf)
+    dev.off()
   }
   
   # (3) Leave-one-out sensitivity analysis
@@ -145,7 +169,19 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   )
   print(sens)
   sink()
-
+  est <- sens$estimate  
+  pdf(
+    file.path(output_dir,
+              paste0(plot_filename, "_leave1out_sensitivity.pdf")),
+    width  = 6.5,
+    height = 6.5
+  )  
+  plot(est,  
+       type = "b",  
+       xlab = "Omitted study",  
+       ylab = "Pooled estimate")  
+  dev.off()
+  
   # (4) Publication-bias checks (k ≥ 10)
   if (res$k >= 10) {
     egger_test <- regtest(res, model = "rma")
@@ -155,6 +191,10 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     )
     print(egger_test)
     sink()
+    pdf(file.path(output_dir, paste0(plot_filename, "_funnel_plot.pdf")),
+        width = 6.5, height = 6.5)
+    funnel(res)
+    dev.off()
     
     # trimmed-and-filled funnel
     tf <- trimfill(res)
@@ -164,6 +204,19 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     )
     print(summary(tf))
     sink()
+    orig_k <- res$k
+    pdf(file.path(output_dir, paste0(plot_filename, "_funnel_trimfill.pdf")),
+        width = 6.5, height = 6.5)
+    funnel(res, pch = 19, col = "black")
+    if (tf$k0 > 0) {
+      pts <- (orig_k + 1):(orig_k + tf$k0)
+      points(
+        x   = tf$yi[pts],
+        y   = sqrt(tf$vi[pts]),
+        pch = 21, bg = "red", col = "red"
+      )
+    }
+    dev.off()
   } else {
     message("Skipping Egger’s test and funnel/trim‐and‐fill (k = ", res$k, " < 10).")
   }
@@ -204,7 +257,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
   
   # compute a little horizontal padding so text sits just outside the widest CI
   x_max <- max(plot_df$ci.ub, na.rm = TRUE)
-  x_pad <- x_max + 0.05 * diff(range(plot_df$ci.lb, plot_df$ci.ub))
+  x_pad <- x_max + 0.15 * diff(range(plot_df$ci.lb, plot_df$ci.ub))
   
   # (5b) Compute dynamic plot height based on row count
   n_rows        <- nrow(plot_df)
@@ -246,15 +299,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
           color = col),
       linewidth = 1
     ) +
-    scale_color_identity(
-      guide  = "legend",
-      labels = c(
-        "#006400" = "95% CI > 0",
-        "#8B0000" = "95% CI < 0",
-        "grey40"  = "95% CI = 0"
-      ),
-      breaks = c("#006400", "#8B0000", "grey40")
-    ) +
+    scale_color_identity(guide = "none") +
     # (7.5) Summary effect (Hedges’ g) dashed line
     geom_vline(xintercept = summary_res$b[1],
                linetype   = "dashed",
@@ -309,7 +354,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       axis.text.y.left     = element_markdown(size = 12),
       axis.text.y.right    = element_blank(),
       axis.ticks.y.right   = element_blank(),
-      plot.margin          = margin(5,5,5,5, "mm")
+      plot.margin          = margin(5,10,5,5, "mm")
     ) +
     coord_cartesian(clip = "off") +
     labs(
@@ -366,7 +411,7 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
     # ————————————————————————————————————————————————
     
     # (13) Compute label position inside plots
-    label_y  <- y_min + pad * 0.5
+    label_y  <- y_min + pad * 0.02
     
     # (14) Loop over moderators for violin plots
     for (mod in moderators) {
@@ -393,16 +438,34 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
       }
       
       # (14d) Compute bottom-inside y-position for each level
-      label_df <- plot_data_mod %>%
-        group_by(across(all_of(mod))) %>%
-        summarize(
-          y_pos = quantile(effect, 0.05, na.rm=TRUE),
-          .groups = "drop"
-        ) %>%
-        rename(lvl = !!mod)
+      lvls <- levels(factor(plot_data_mod[[mod]]))
+      n    <- length(lvls)
+      # define the vertical span for labels (from 2% up to 50% of pad)
+      label_min <- y_min + pad * 0.02
+      label_max <- y_min + pad * 0.50
+      # spread them evenly in that span
+      y_positions <- seq(label_min, label_max, length.out = n)
+      label_df <- tibble(
+        lvl   = factor(lvls, levels = lvls),
+        y_pos = y_positions
+        )
+      label_df <- label_df[order(label_df$y_pos), ]
+      min_sep  <- pad * 0.5
+      for(i in 2:nrow(label_df)) {
+        gap <- label_df$y_pos[i] - label_df$y_pos[i-1]
+        if (gap < min_sep) {
+          label_df$y_pos[i] <- label_df$y_pos[i-1] + min_sep
+        }
+      }
       
       # (14e) Build and save the violin plot
       p_raw <- ggplot(plot_data_mod, aes_string(x = mod, y = "effect")) +
+        geom_hline(
+          yintercept = 0,
+          color      = "black",
+          linewidth  = 0.7,
+          alpha = 0.8
+        ) +
         geom_violin(
           fill      = "skyblue",
           width     = 0.8,
@@ -416,19 +479,19 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
           yintercept = summary_res$b[1],
           linetype   = "dashed",
           color      = "orange",
-          linewidth  = 0.75
+          linewidth  = 2
         ) +
         geom_jitter(
           data   = plot_data_mod,
           aes(color = col),
           width  = 0.1,
-          size   = 2
+          size   = 4
         ) +
         stat_summary(
           fun    = median,
           geom   = "point",
           shape  = 21,
-          size   = 2,
+          size   = 4,
           stroke = 1,
           fill   = "white"
         ) +
@@ -446,9 +509,8 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
         # Add boxed labels at the bottom center of each violin
         geom_label(
           data = label_df,
-          aes(x = lvl, label = lvl),
-          y        = label_y,
-          size     = 3,
+          aes(x = lvl, y = y_pos, label = lvl),
+          size     = 5,
           hjust    = 0.5,
           angle    = 0,       # or 30 if you really like it
           fill     = "white", # white background
@@ -461,7 +523,8 @@ run_meta <- function(df, label, plot_filename, allow_moderator = TRUE) {
         ) +
         theme_minimal(base_size = 12) +
         theme(
-          panel.grid.minor= element_blank()
+          panel.grid.minor= element_blank(),
+          axis.title.y = element_text(size = 16)
         )+
         coord_cartesian(ylim = c(y_min, y_max))
       
